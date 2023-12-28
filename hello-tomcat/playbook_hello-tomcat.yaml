@@ -2,7 +2,7 @@
 #
 # Playbook to create an installation of Tomcat
 #
-- name: Deploy 3scale in OpenShift cluster
+- name: Deploy Tomcat in OpenShift cluster
   hosts: localhost
   vars:
     project: "hello-tomcat"
