@@ -6,6 +6,7 @@
   hosts: localhost
   vars:
     project: "hello-tomcat"
+    webhook_password: "mywebhookpassword"
   tasks:
 
     - name: Link secret to pipeline
@@ -234,8 +235,7 @@
             name: git-secret
             namespace: "{{ project }}"
           data:
-            secretToken: WnFaamFCQ1JzaDRSY3d3WUpBWDg1RkNBNytvRFdyRy8=
-          type: Opaque
+            secretToken: "{{ webhook_password | b64encode }}"
 
     - name: Create Route
       kubernetes.core.k8s:
