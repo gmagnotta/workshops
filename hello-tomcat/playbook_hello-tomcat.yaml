@@ -8,6 +8,9 @@
     project: "hello-tomcat"
   tasks:
 
+    - name: Link secret to pipeline
+      command: "oc secrets link pipeline redhatregistryio -n {{ project }}"
+
     - name: Create Image Stream
       kubernetes.core.k8s:
         state: present
