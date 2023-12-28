@@ -161,9 +161,11 @@
               metadata:
                 generateName: hello-tomcat-
               spec:
+                params:
+                  - name: repo-url
+                    value: 'https://github.com/gmagnotta/examples'
                 pipelineRef:
                   name: hello-tomcat
-                serviceAccountName: pipeline
                 workspaces:
                   - name: src
                     volumeClaimTemplate:
