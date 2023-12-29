@@ -55,18 +55,21 @@
           apiVersion: v1
           metadata:
             name: hello-tomcat-s2ienvironment
+            namespace: "{{ project }}"
           data:
-            #MAVEN REPO TO PUSH ARTIFACTS TO
-            #MAVEN_REPOS="nexus"
-            #NEXUS_MAVEN_REPO_ID="nexus"
-            #NEXUS_MAVEN_REPO_URL="http://nexus3:8081"
-            #NEXUS_MAVEN_REPO_USERNAME="myuser"
-            #NEXUS_MAVEN_REPO_PASSWORD="mypass"
-            #MAVEN MIRROR
-            #MAVEN_MIRRORS=dev
-            #DEV_MAVEN_MIRROR_ID=nexus
-            #DEV_MAVEN_MIRROR_URL=http://nexus3:8081/repository/maven-group/
-            #DEV_MAVEN_MIRROR_OF=<![CDATA[*]]>
+            env: |
+              MAVEN_CLEAR_REPO=true
+              #MAVEN REPO TO PUSH ARTIFACTS TO
+              #MAVEN_REPOS=nexus
+              #NEXUS_MAVEN_REPO_ID=nexus
+              #NEXUS_MAVEN_REPO_URL=http://nexus3:8081
+              #NEXUS_MAVEN_REPO_USERNAME=myuser
+              #NEXUS_MAVEN_REPO_PASSWORD=mypass
+              #MAVEN MIRROR
+              #MAVEN_MIRRORS=dev
+              #DEV_MAVEN_MIRROR_ID=nexus
+              #DEV_MAVEN_MIRROR_URL=http://nexus3:8081/repository/maven-group/
+              #DEV_MAVEN_MIRROR_OF=<![CDATA[*]]>
 
     - name: Create Pipeline
       kubernetes.core.k8s:
