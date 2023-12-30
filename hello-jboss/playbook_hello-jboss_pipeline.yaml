@@ -2,15 +2,20 @@
 #
 # Playbook to create a Tekton Pipeline for jboss-eap project
 #
-- name: Deploy Tomcat in OpenShift cluster
+- name: Deploy JBoss EAP in OpenShift cluster
   hosts: localhost
   vars:
     project: "hello-jboss"
     webhook_password: "mywebhookpassword"
   tasks:
 
+    - name: Check if secret is linked
+      shell: "oc get serviceaccount pipeline -n {{ project }} -o json | jq -r '.secrets[] | select(.name | test(\"redhatregistryio\")).name'"
+      register: redhatregistryio
+
     - name: Link secret to pipeline
       command: "oc secrets link pipeline redhatregistryio -n {{ project }}"
+      when: redhatregistryio.stdout == ""
 
     - name: Create Image Stream
       kubernetes.core.k8s:
@@ -41,17 +46,17 @@
           apiVersion: image.openshift.io/v1
           kind: ImageStream
           metadata:
-            name: eap74-openjdk11-runtime-openshift-rhel8
+            name: flyway-openjdk11-openshift-rhel8
             namespace: "{{ project }}"
           spec:
             lookupPolicy:
               local: true
             tags:
             - annotations:
-                description: Red Hat JBoss EAP 7 runtime Image
+                description: Flyway runtime Image
               from:
                 kind: DockerImage
-                name: registry.redhat.io/jboss-eap-7/eap74-openjdk11-runtime-openshift-rhel8
+                name: quay.io/gmagnotta/flyway:latest
               name: latest
               referencePolicy:
                 type: Local
@@ -64,19 +69,6 @@
           kind: ImageStream
           metadata:
             name: hello-jboss
-            namespace: "{{ project }}"
-          spec:
-            lookupPolicy:
-              local: true
-
-    - name: Create ImageStream
-      kubernetes.core.k8s:
-        state: present
-        definition:
-          apiVersion: image.openshift.io/v1
-          kind: ImageStream
-          metadata:
-            name: flyway
             namespace: "{{ project }}"
           spec:
             lookupPolicy:
@@ -119,6 +111,63 @@
               #DEV_MAVEN_MIRROR_URL=http://nexus3:8081/repository/maven-group/
               #DEV_MAVEN_MIRROR_OF=<![CDATA[*]]>
 
+    - name: Create Secret
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: hello-jboss
+            namespace: "{{ project }}"
+          data:
+            database-username: amJvc3M=
+            database-password: amJvc3M=
+            database-name: amJvc3M=
+            sso-public-key: ''
+            sso-username: ''
+            sso-password: ''
+            sso-secret: cGFzc3dvcmQ=
+            https-password: cGFzc3dvcmQ=
+            jgroups-encrypt-password: cGFzc3dvcmQ=
+            jgroups-cluster-password: cGFzc3dvcmQ=
+            mq-username: dXNlcg==
+            mq-password: cGFzc3dvcmQ=
+
+    - name: Create ConfigMap
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: hello-jboss
+            namespace: "{{ project }}"
+          data:
+            enable-generate-default-datasource: 'false'
+            sso-url: 'https://secure-sso/auth'
+            sso-realm: 'demo'
+            sso-client: 'jboss-eap'
+            sso-disable-ssl-certificate-validation: 'false'
+            hostname-http: ''
+            hostname-https: ''
+            ocp-postgresql-service-host: 'postgresql'
+            ocp-postgresql-service-port: '5432'
+            ds1-connection-checker: 'org.jboss.jca.adapters.jdbc.extensions.postgres.PostgreSQLValidConnectionChecker'
+            ds1-driver: 'postgresql'
+            ds1-exception-sorter: 'org.jboss.jca.adapters.jdbc.extensions.postgres.PostgreSQLExceptionSorter'
+            ds1-max-pool-size: '20'
+            ds1-min-pool-size: '20'
+            ds1-nonxa: 'true'
+            ab-prometheus-enable: 'true'
+            auto-deploy-exploded: 'false'
+            mq-queues: ''
+            mq-topics: ''
+            mq-jndi: 'java:jboss/DefaultJMSConnectionFactory'
+            mq-serializable-packages: ''
+            amq-service-host: 'amqbroker'
+            amq-service-port: '61616'
+
     - name: Create Pipeline
       kubernetes.core.k8s:
         state: present
@@ -129,8 +178,6 @@
             name: hello-jboss
             namespace: "{{ project }}"
           spec:
-            params:
-              - name: repo-url
             workspaces:
               - name: src
               - name: env
@@ -146,10 +193,10 @@
                     workspace: src
                 params:
                   - name: url
-                    value: $(params.repo-url)
+                    value: 'https://github.com/gmagnotta/examples'
                   - name: deleteExisting
                     value: "true"
-              - name: build
+              - name: build-jboss
                 taskRef:
                   name: buildah-s2i
                 runAfter:
@@ -172,8 +219,55 @@
                     value: "image-registry.openshift-image-registry.svc:5000/{{ project }}/hello-jboss"
                   - name: PATH_CONTEXT
                     value: "jboss-eap-test"
-                  - name: INCREMENTAL
-                    value: "true"
+              - name: build-migration
+                taskRef:
+                  name: buildah-s2i
+                runAfter:
+                  - fetch-repository
+                workspaces:
+                  - name: source
+                    workspace: src
+                  - name: environment
+                    workspace: env
+                  - name: secureenvironment
+                    workspace: secureenv
+                  - name: artifacts
+                    workspace: artifacts
+                params:
+                  - name: BUILDER_IMAGE
+                    value: "image-registry.openshift-image-registry.svc:5000/{{ project }}/flyway-openjdk11-openshift-rhel8:latest"
+                  - name: TLSVERIFY
+                    value: "false"
+                  - name: OUTPUT_IMAGE
+                    value: "image-registry.openshift-image-registry.svc:5000/{{ project }}/hello-jboss-migration"
+                  - name: PATH_CONTEXT
+                    value: "jboss-eap-test/src/main/resources/db"
+              - name: deploy
+                taskRef:
+                  name: openshift-client
+                  kind: ClusterTask
+                runAfter:
+                  - build-migration
+                workspaces:
+                  - name: manifest-dir
+                    workspace: src
+                params:
+                  - name: SCRIPT
+                    value: |
+                      cd $(workspaces.manifest-dir.path)/jboss-eap-test/k8s/overlay/dev
+                      
+                      cat <<EOF > kustomization.yaml
+                      apiVersion: kustomize.config.k8s.io/v1beta1
+                      kind: Kustomization
+
+                      resources:
+                      - ../../base
+                      images:
+                      - name: hello-jboss-migration
+                        newName: $(tasks.build-migration.results.IMAGE_URL)@$(tasks.build-migration.results.IMAGE_DIGEST)
+                      EOF
+
+                      oc apply -k .
 
     - name: Create TriggerBinding
       kubernetes.core.k8s:
@@ -208,9 +302,6 @@
               metadata:
                 generateName: hello-jboss-
               spec:
-                params:
-                  - name: repo-url
-                    value: 'https://github.com/gmagnotta/examples'
                 pipelineRef:
                   name: hello-jboss
                 workspaces:
@@ -225,21 +316,13 @@
                         storageClassName: ocs-external-storagecluster-ceph-rbd
                         volumeMode: Filesystem
                       status: {}
-                  - emptyDir: {}
+                  - configMap:
+                      name: hello-jboss-s2ienvironment
                     name: env
                   - emptyDir: {}
                     name: secureenv
                   - name: artifacts
-                    volumeClaimTemplate:
-                      spec:
-                        accessModes:
-                          - ReadWriteOnce
-                        resources:
-                          requests:
-                            storage: 1Gi
-                        storageClassName: ocs-external-storagecluster-ceph-rbd
-                        volumeMode: Filesystem
-                      status: {}
+                    emptyDir: {}
 
     - name: Create EventListener
       kubernetes.core.k8s:
