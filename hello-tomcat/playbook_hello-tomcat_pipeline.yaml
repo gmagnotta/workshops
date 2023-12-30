@@ -90,8 +90,6 @@
             name: hello-tomcat
             namespace: "{{ project }}"
           spec:
-            params:
-              - name: repo-url
             workspaces:
               - name: src
               - name: env
@@ -107,7 +105,7 @@
                     workspace: src
                 params:
                   - name: url
-                    value: $(params.repo-url)
+                    value: 'https://github.com/gmagnotta/examples'
                   - name: deleteExisting
                     value: "true"
               - name: build
@@ -133,8 +131,6 @@
                     value: "image-registry.openshift-image-registry.svc:5000/{{ project }}/hello-tomcat"
                   - name: PATH_CONTEXT
                     value: "hello-tomcat"
-                  - name: INCREMENTAL
-                    value: "false"
               - name: deploy
                 taskRef:
                   name: openshift-client
@@ -195,9 +191,6 @@
               metadata:
                 generateName: hello-tomcat-
               spec:
-                params:
-                  - name: repo-url
-                    value: 'https://github.com/gmagnotta/examples'
                 pipelineRef:
                   name: hello-tomcat
                 workspaces:
@@ -212,21 +205,13 @@
                         storageClassName: ocs-external-storagecluster-ceph-rbd
                         volumeMode: Filesystem
                       status: {}
-                  - emptyDir: {}
+                  - configMap:
+                      name: hello-tomcat-s2ienvironment
                     name: env
                   - emptyDir: {}
                     name: secureenv
                   - name: artifacts
-                    volumeClaimTemplate:
-                      spec:
-                        accessModes:
-                          - ReadWriteOnce
-                        resources:
-                          requests:
-                            storage: 1Gi
-                        storageClassName: ocs-external-storagecluster-ceph-rbd
-                        volumeMode: Filesystem
-                      status: {}
+                    emptyDir: {}
 
     - name: Create EventListener
       kubernetes.core.k8s:
