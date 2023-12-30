@@ -1,25 +1,16 @@
 ---
 #
-# Playbook to create a Tekton Pipeline for hello-tomcat project
+# Playbook to create a Tekton Pipeline for jboss-eap project
 #
 - name: Deploy Tomcat in OpenShift cluster
   hosts: localhost
   vars:
-    project: "hello-tomcat"
+    project: "hello-jboss"
     webhook_password: "mywebhookpassword"
   tasks:
 
-    - name: Check if secret is linked
-      shell: "oc get serviceaccount pipeline -n {{ project }} -o json | jq -r '.secrets[] | select(.name | test(\"redhatregistryio\")).name'"
-      register: redhatregistryio
-
-    # - name: Print value
-    #   ansible.builtin.debug:
-    #     msg: "redhatregistryio={{ redhatregistryio.stdout }}"
-
     - name: Link secret to pipeline
       command: "oc secrets link pipeline redhatregistryio -n {{ project }}"
-      when: redhatregistryio.stdout == ""
 
     - name: Create Image Stream
       kubernetes.core.k8s:
@@ -28,17 +19,39 @@
           apiVersion: image.openshift.io/v1
           kind: ImageStream
           metadata:
-            name: jws57-openjdk11-openshift-rhel8
+            name: eap74-openjdk11-openshift-rhel8
             namespace: "{{ project }}"
           spec:
             lookupPolicy:
               local: true
             tags:
             - annotations:
-                description: Red Hat JBoss WS 5.7 Image
+                description: Red Hat JBoss EAP 7 Image
               from:
                 kind: DockerImage
-                name: registry.redhat.io/jboss-webserver-5/jws57-openjdk11-openshift-rhel8
+                name: registry.redhat.io/jboss-eap-7/eap74-openjdk11-openshift-rhel8:7.4.5
+              name: latest
+              referencePolicy:
+                type: Local
+
+    - name: Create Image Stream
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: image.openshift.io/v1
+          kind: ImageStream
+          metadata:
+            name: eap74-openjdk11-runtime-openshift-rhel8
+            namespace: "{{ project }}"
+          spec:
+            lookupPolicy:
+              local: true
+            tags:
+            - annotations:
+                description: Red Hat JBoss EAP 7 runtime Image
+              from:
+                kind: DockerImage
+                name: registry.redhat.io/jboss-eap-7/eap74-openjdk11-runtime-openshift-rhel8
               name: latest
               referencePolicy:
                 type: Local
@@ -50,7 +63,33 @@
           apiVersion: image.openshift.io/v1
           kind: ImageStream
           metadata:
-            name: hello-tomcat
+            name: hello-jboss
+            namespace: "{{ project }}"
+          spec:
+            lookupPolicy:
+              local: true
+
+    - name: Create ImageStream
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: image.openshift.io/v1
+          kind: ImageStream
+          metadata:
+            name: flyway
+            namespace: "{{ project }}"
+          spec:
+            lookupPolicy:
+              local: true
+
+    - name: Create ImageStream
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: image.openshift.io/v1
+          kind: ImageStream
+          metadata:
+            name: hello-jboss-migration
             namespace: "{{ project }}"
           spec:
             lookupPolicy:
@@ -63,11 +102,11 @@
           kind: ConfigMap
           apiVersion: v1
           metadata:
-            name: hello-tomcat-s2ienvironment
+            name: hello-jboss-s2ienvironment
             namespace: "{{ project }}"
           data:
             env: |
-              MAVEN_CLEAR_REPO=true
+              #GALLEON_PROVISION_DEFAULT_FAT_SERVER=false
               #MAVEN REPO TO PUSH ARTIFACTS TO
               #MAVEN_REPOS=nexus
               #NEXUS_MAVEN_REPO_ID=nexus
@@ -87,7 +126,7 @@
           apiVersion: tekton.dev/v1beta1
           kind: Pipeline
           metadata:
-            name: hello-tomcat
+            name: hello-jboss
             namespace: "{{ project }}"
           spec:
             params:
@@ -126,41 +165,15 @@
                     workspace: artifacts
                 params:
                   - name: BUILDER_IMAGE
-                    value: "image-registry.openshift-image-registry.svc:5000/{{ project }}/jws57-openjdk11-openshift-rhel8"
+                    value: "image-registry.openshift-image-registry.svc:5000/{{ project }}/eap74-openjdk11-openshift-rhel8:latest"
                   - name: TLSVERIFY
                     value: "false"
                   - name: OUTPUT_IMAGE
-                    value: "image-registry.openshift-image-registry.svc:5000/{{ project }}/hello-tomcat"
+                    value: "image-registry.openshift-image-registry.svc:5000/{{ project }}/hello-jboss"
                   - name: PATH_CONTEXT
-                    value: "hello-tomcat"
+                    value: "jboss-eap-test"
                   - name: INCREMENTAL
-                    value: "false"
-              - name: deploy
-                taskRef:
-                  name: openshift-client
-                  kind: ClusterTask
-                runAfter:
-                  - build
-                workspaces:
-                  - name: manifest-dir
-                    workspace: src
-                params:
-                  - name: SCRIPT
-                    value: |
-                      cd $(workspaces.manifest-dir.path)/hello-tomcat/k8s/overlay/dev
-                      
-                      cat <<EOF > kustomization.yaml
-                      apiVersion: kustomize.config.k8s.io/v1beta1
-                      kind: Kustomization
-
-                      resources:
-                      - ../../base
-                      images:
-                      - name: hello-tomcat
-                        newName: $(tasks.build.results.IMAGE_URL)@$(tasks.build.results.IMAGE_DIGEST)
-                      EOF
-
-                      oc apply -k .
+                    value: "true"
 
     - name: Create TriggerBinding
       kubernetes.core.k8s:
@@ -193,13 +206,13 @@
             - apiVersion: tekton.dev/v1beta1
               kind: PipelineRun
               metadata:
-                generateName: hello-tomcat-
+                generateName: hello-jboss-
               spec:
                 params:
                   - name: repo-url
                     value: 'https://github.com/gmagnotta/examples'
                 pipelineRef:
-                  name: hello-tomcat
+                  name: hello-jboss
                 workspaces:
                   - name: src
                     volumeClaimTemplate:
