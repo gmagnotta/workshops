@@ -1,0 +1,70 @@
+---
+#
+# Playbook to create an installation of an AMQ Broker
+#
+
+- name: Deploy 3scale in OpenShift cluster
+  hosts: localhost
+  vars:
+    project: "amqbroker-project"
+  tasks:
+
+    - name: Create OperatorGroup
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: operators.coreos.com/v1
+          kind: OperatorGroup
+          metadata:
+            name: myamqbroker
+            namespace: "{{ project }}"
+          spec:
+            targetNamespaces:
+              - "{{ project }}"
+            upgradeStrategy: Default
+
+    - name: Create Subscription
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: operators.coreos.com/v1alpha1
+          kind: Subscription
+          metadata:
+            name: amq-broker-rhel8
+            namespace: "{{ project }}"
+          spec:
+            channel: 7.11.x
+            name: amq-broker-rhel8
+            installPlanApproval: Automatic
+            source: redhat-operators
+            sourceNamespace: openshift-marketplace
+            startingCSV: amq-broker-operator.v7.11.4-opr-1
+
+    - name: Create ActiveMQArtemis
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: broker.amq.io/v1beta1
+          kind: ActiveMQArtemis
+          metadata:
+            name: ex-aao
+            namespace: "{{ project }}"
+          spec:
+            deploymentPlan:
+              size: 1
+              image: placeholder
+              requireLogin: false
+              persistenceEnabled: true
+              journalType: nio
+              messageMigration: true
+            console:
+              expose: true
+            env:
+            - name: AMQ_USER
+              value: 'user'
+            - name: AMQ_PASSWORD
+              value: 'password'
+            - name: AMQ_ROLE
+              value: 'admin'
+            - name: MQ_SERIALIZABLE_PACKAGES
+              value: ''
