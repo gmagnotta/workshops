@@ -7,8 +7,27 @@
   vars:
     project: "hello-jboss"
     webhook_password: "mywebhookpassword"
-    hostname_https: "secure-hello-jboss-project.apps.cluster-wwpq2.dynamic.redhatworkshops.io"
+    hostname_https: "hello-jboss-project.localdomain"
+    hostname_http: "secure-hello-jboss-project.localdomain"
     password: "password"
+    database_username: "jboss"
+    database_password: "jboss"
+    database_name: "jboss"
+    sso_public_key: ""
+    sso_secret: "password"
+    sso_url: "https://sso.localdomain/auth/"
+    sso_realm: "hello-jboss"
+    sso_client: "hello-jboss"
+    sso_username: ""
+    sso_password: ""
+    ocp_postgresql_service_host: "postgresql.localdomain"
+    ocp_postgresql_service_port: "5432"
+    amq_service_host: "amqbroker.localdomain"
+    amq_service_port: "61616"
+    mq_queues: "getTopItemsCommand,getTopOrdersCommand,createOrderCommand,invalidMessage"
+    mq_username: "user"
+    mq_password: "password"
+
   tasks:
 
     - name: Check if secret is linked
@@ -58,18 +77,18 @@
             name: hello-jboss
             namespace: "{{ project }}"
           data:
-            database-username: amJvc3M=
-            database-password: amJvc3M=
-            database-name: amJvc3M=
-            sso-public-key: ''
-            sso-username: ''
-            sso-password: ''
-            sso-secret: cGFzc3dvcmQ=
+            database-username: "{{ database_username | b64encode }}"
+            database-password: "{{ database_password | b64encode }}"
+            database-name: "{{ database_name | b64encode }}"
+            sso-public-key: "{{ sso_public_key | b64encode }}"
+            sso-secret: "{{ sso_secret | b64encode }}"
+            sso-username: "{{ sso_username | b64encode }}"
+            sso-password: "{{ sso_password | b64encode }}"
             https-password: "{{ password | b64encode }}"
             jgroups-encrypt-password: "{{ password | b64encode }}"
             jgroups-cluster-password: "{{ password | b64encode }}"
-            mq-username: dXNlcg==
-            mq-password: cGFzc3dvcmQ=
+            mq-username: "{{ mq_username | b64encode }}"
+            mq-password: "{{ mq_password | b64encode }}"
 
     - name: Create ConfigMap
       kubernetes.core.k8s:
@@ -82,14 +101,14 @@
             namespace: "{{ project }}"
           data:
             enable-generate-default-datasource: 'false'
-            sso-url: 'https://secure-sso/auth'
-            sso-realm: 'demo'
-            sso-client: 'jboss-eap'
+            sso-url: "{{ sso_url }}"
+            sso-realm: "{{ sso_realm }}"
+            sso-client: "{{ sso_client }}"
             sso-disable-ssl-certificate-validation: 'false'
-            hostname-http: ''
-            hostname-https: ''
-            ocp-postgresql-service-host: 'postgresql'
-            ocp-postgresql-service-port: '5432'
+            hostname-http: "{{ hostname_http }}"
+            hostname-https: "{{ hostname_https }}"
+            ocp-postgresql-service-host: "{{ ocp_postgresql_service_host }}"
+            ocp-postgresql-service-port: "{{ ocp_postgresql_service_port }}"
             ds1-connection-checker: 'org.jboss.jca.adapters.jdbc.extensions.postgres.PostgreSQLValidConnectionChecker'
             ds1-driver: 'postgresql'
             ds1-exception-sorter: 'org.jboss.jca.adapters.jdbc.extensions.postgres.PostgreSQLExceptionSorter'
@@ -98,12 +117,12 @@
             ds1-nonxa: 'true'
             ab-prometheus-enable: 'true'
             auto-deploy-exploded: 'false'
-            mq-queues: ''
+            mq-queues: "{{ mq_queues }}"
             mq-topics: ''
             mq-jndi: 'java:jboss/DefaultJMSConnectionFactory'
             mq-serializable-packages: ''
-            amq-service-host: 'amqbroker'
-            amq-service-port: '61616'
+            amq-service-host: "{{ amq_service_host }}"
+            amq-service-port: "{{ amq_service_port }}"
 
     - name: Create Image Stream
       kubernetes.core.k8s:
