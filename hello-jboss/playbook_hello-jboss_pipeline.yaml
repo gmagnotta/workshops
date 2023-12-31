@@ -7,6 +7,8 @@
   vars:
     project: "hello-jboss"
     webhook_password: "mywebhookpassword"
+    hostname_https: "secure-hello-jboss-project.apps.cluster-wwpq2.dynamic.redhatworkshops.io"
+    password: "password"
   tasks:
 
     - name: Check if secret is linked
@@ -16,6 +18,92 @@
     - name: Link secret to pipeline
       command: "oc secrets link pipeline redhatregistryio -n {{ project }}"
       when: redhatregistryio.stdout == ""
+
+
+    - name: Check if eap-ssl-secret is available
+      command: "oc get secret eap-ssl-secret -n {{ project }} -o json"
+      register: eapsslsecret
+      ignore_errors: true
+
+    - name: Generate https certificate
+      command: "keytool -genkeypair -storepass {{ password }} -keypass {{ password }} -dname \"CN={{ hostname_https }}\" -alias https -storetype JKS -keyalg RSA -keystore eapkeystore.jks"
+      when: eapsslsecret.failed == true
+
+    - name: Import https certificate in OpenShift
+      command: "oc create secret generic eap-ssl-secret --from-file=eapkeystore.jks"
+      when: eapsslsecret.failed == true
+
+
+    - name: Check if eap-jgroup-secret is available
+      command: "oc get secret eap-jgroup-secret -n {{ project }} -o json"
+      register: eapjgroupsecret
+      ignore_errors: true
+
+    - name: Generate jgroups key
+      command: "keytool -genseckey -alias jgroups -storepass {{ password }} -keypass {{ password }} -storetype JCEKS -keyalg Blowfish -keysize 56 -keystore eapjgroups.jceks"
+      when: eapjgroupsecret.failed == true
+
+    - name: Import jgroups certificate in OpenShift
+      command: "oc create secret generic eap-jgroup-secret --from-file=eapjgroups.jceks"
+      when: eapjgroupsecret.failed == true
+
+
+    - name: Create Secret
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: hello-jboss
+            namespace: "{{ project }}"
+          data:
+            database-username: amJvc3M=
+            database-password: amJvc3M=
+            database-name: amJvc3M=
+            sso-public-key: ''
+            sso-username: ''
+            sso-password: ''
+            sso-secret: cGFzc3dvcmQ=
+            https-password: "{{ password | b64encode }}"
+            jgroups-encrypt-password: "{{ password | b64encode }}"
+            jgroups-cluster-password: "{{ password | b64encode }}"
+            mq-username: dXNlcg==
+            mq-password: cGFzc3dvcmQ=
+
+    - name: Create ConfigMap
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: hello-jboss
+            namespace: "{{ project }}"
+          data:
+            enable-generate-default-datasource: 'false'
+            sso-url: 'https://secure-sso/auth'
+            sso-realm: 'demo'
+            sso-client: 'jboss-eap'
+            sso-disable-ssl-certificate-validation: 'false'
+            hostname-http: ''
+            hostname-https: ''
+            ocp-postgresql-service-host: 'postgresql'
+            ocp-postgresql-service-port: '5432'
+            ds1-connection-checker: 'org.jboss.jca.adapters.jdbc.extensions.postgres.PostgreSQLValidConnectionChecker'
+            ds1-driver: 'postgresql'
+            ds1-exception-sorter: 'org.jboss.jca.adapters.jdbc.extensions.postgres.PostgreSQLExceptionSorter'
+            ds1-max-pool-size: '20'
+            ds1-min-pool-size: '20'
+            ds1-nonxa: 'true'
+            ab-prometheus-enable: 'true'
+            auto-deploy-exploded: 'false'
+            mq-queues: ''
+            mq-topics: ''
+            mq-jndi: 'java:jboss/DefaultJMSConnectionFactory'
+            mq-serializable-packages: ''
+            amq-service-host: 'amqbroker'
+            amq-service-port: '61616'
 
     - name: Create Image Stream
       kubernetes.core.k8s:
@@ -111,62 +199,7 @@
               #DEV_MAVEN_MIRROR_URL=http://nexus3:8081/repository/maven-group/
               #DEV_MAVEN_MIRROR_OF=<![CDATA[*]]>
 
-    - name: Create Secret
-      kubernetes.core.k8s:
-        state: present
-        definition:
-          apiVersion: v1
-          kind: Secret
-          metadata:
-            name: hello-jboss
-            namespace: "{{ project }}"
-          data:
-            database-username: amJvc3M=
-            database-password: amJvc3M=
-            database-name: amJvc3M=
-            sso-public-key: ''
-            sso-username: ''
-            sso-password: ''
-            sso-secret: cGFzc3dvcmQ=
-            https-password: cGFzc3dvcmQ=
-            jgroups-encrypt-password: cGFzc3dvcmQ=
-            jgroups-cluster-password: cGFzc3dvcmQ=
-            mq-username: dXNlcg==
-            mq-password: cGFzc3dvcmQ=
 
-    - name: Create ConfigMap
-      kubernetes.core.k8s:
-        state: present
-        definition:
-          apiVersion: v1
-          kind: ConfigMap
-          metadata:
-            name: hello-jboss
-            namespace: "{{ project }}"
-          data:
-            enable-generate-default-datasource: 'false'
-            sso-url: 'https://secure-sso/auth'
-            sso-realm: 'demo'
-            sso-client: 'jboss-eap'
-            sso-disable-ssl-certificate-validation: 'false'
-            hostname-http: ''
-            hostname-https: ''
-            ocp-postgresql-service-host: 'postgresql'
-            ocp-postgresql-service-port: '5432'
-            ds1-connection-checker: 'org.jboss.jca.adapters.jdbc.extensions.postgres.PostgreSQLValidConnectionChecker'
-            ds1-driver: 'postgresql'
-            ds1-exception-sorter: 'org.jboss.jca.adapters.jdbc.extensions.postgres.PostgreSQLExceptionSorter'
-            ds1-max-pool-size: '20'
-            ds1-min-pool-size: '20'
-            ds1-nonxa: 'true'
-            ab-prometheus-enable: 'true'
-            auto-deploy-exploded: 'false'
-            mq-queues: ''
-            mq-topics: ''
-            mq-jndi: 'java:jboss/DefaultJMSConnectionFactory'
-            mq-serializable-packages: ''
-            amq-service-host: 'amqbroker'
-            amq-service-port: '61616'
 
     - name: Create Pipeline
       kubernetes.core.k8s:
