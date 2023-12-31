@@ -15,7 +15,7 @@
     database_name: "jboss"
     sso_public_key: ""
     sso_secret: "password"
-    sso_url: "https://sso.localdomain/auth/"
+    sso_url: "https://sso.localdomain/"
     sso_realm: "hello-jboss"
     sso_client: "hello-jboss"
     sso_username: ""
