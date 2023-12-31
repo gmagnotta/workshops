@@ -358,6 +358,160 @@
 
                       oc apply -k .
 
+    - name: Create Pipeline
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: tekton.dev/v1beta1
+          kind: Pipeline
+          metadata:
+            name: hello-jboss-secure
+            namespace: "{{ project }}"
+          spec:
+            workspaces:
+              - name: src
+              - name: env
+              - name: secureenv
+              - name: artifacts
+            tasks:
+              - name: fetch-repository
+                taskRef:
+                  name: git-clone
+                  kind: ClusterTask
+                workspaces:
+                  - name: output
+                    workspace: src
+                params:
+                  - name: url
+                    value: 'https://github.com/gmagnotta/examples'
+                  - name: deleteExisting
+                    value: "true"
+              - name: build-jboss
+                taskRef:
+                  name: buildah-s2i
+                runAfter:
+                  - fetch-repository
+                workspaces:
+                  - name: source
+                    workspace: src
+                  - name: environment
+                    workspace: env
+                  - name: secureenvironment
+                    workspace: secureenv
+                  - name: artifacts
+                    workspace: artifacts
+                params:
+                  - name: BUILDER_IMAGE
+                    value: "image-registry.openshift-image-registry.svc:5000/{{ project }}/eap74-openjdk11-openshift-rhel8:latest"
+                  - name: TLSVERIFY
+                    value: "false"
+                  - name: OUTPUT_IMAGE
+                    value: "image-registry.openshift-image-registry.svc:5000/{{ project }}/hello-jboss"
+                  - name: PATH_CONTEXT
+                    value: "jboss-eap-test"
+              - name: build-migration
+                taskRef:
+                  name: buildah-s2i
+                runAfter:
+                  - fetch-repository
+                workspaces:
+                  - name: source
+                    workspace: src
+                  - name: environment
+                    workspace: env
+                  - name: secureenvironment
+                    workspace: secureenv
+                  - name: artifacts
+                    workspace: artifacts
+                params:
+                  - name: BUILDER_IMAGE
+                    value: "image-registry.openshift-image-registry.svc:5000/{{ project }}/flyway-openjdk11-openshift-rhel8:latest"
+                  - name: TLSVERIFY
+                    value: "false"
+                  - name: OUTPUT_IMAGE
+                    value: "image-registry.openshift-image-registry.svc:5000/{{ project }}/hello-jboss-migration"
+                  - name: PATH_CONTEXT
+                    value: "jboss-eap-test/src/main/resources/db"
+              - name: vuln-scan
+                taskRef:
+                  name: vulnerability-scan
+                runAfter:
+                  - build-jboss
+                params:
+                  - name: IMAGETOSCAN
+                    value: "$(tasks.build-jboss.results.IMAGE_URL)@$(tasks.build-jboss.results.IMAGE_DIGEST)"
+              - name: vuln-scan-flyway
+                taskRef:
+                  name: vulnerability-scan
+                runAfter:
+                  - build-migration
+                params:
+                  - name: IMAGETOSCAN
+                    value: "$(tasks.build-migration.results.IMAGE_URL)@$(tasks.build-migration.results.IMAGE_DIGEST)"
+              - name: deploy
+                taskRef:
+                  name: openshift-client
+                  kind: ClusterTask
+                runAfter:
+                  - vuln-scan
+                  - vuln-scan-flyway
+                workspaces:
+                  - name: manifest-dir
+                    workspace: src
+                params:
+                  - name: SCRIPT
+                    value: |
+                      cd $(workspaces.manifest-dir.path)/jboss-eap-test/k8s/overlay/dev
+                      
+                      cat <<EOF > kustomization.yaml
+                      apiVersion: kustomize.config.k8s.io/v1beta1
+                      kind: Kustomization
+
+                      resources:
+                      - ../../base
+
+                      patches:
+                      - path: ./patch-deployment.yaml
+                        target:
+                          kind: Deployment
+                          name: "hello-jboss"
+                      - path: ./patch-job.yaml
+                        target:
+                          kind: Job
+                          name: "hello-jboss-migration"
+                      EOF
+
+                      cat <<EOF > patch-deployment.yaml
+                      apiVersion: apps/v1
+                      kind: Deployment
+                      metadata:
+                        name: hello-jboss
+                      spec:
+                        template:
+                          spec:
+                            containers:
+                              - name: hello-jboss
+                                image: $(tasks.build-jboss.results.IMAGE_URL)@$(tasks.build-jboss.results.IMAGE_DIGEST)
+                            initContainers:
+                              - name: hello-jboss-wait-migration
+                                image: $(tasks.build-migration.results.IMAGE_URL)@$(tasks.build-migration.results.IMAGE_DIGEST)
+                      EOF
+
+                      cat <<EOF > patch-job.yaml
+                      apiVersion: batch/v1
+                      kind: Job
+                      metadata:
+                        name: hello-jboss-migration
+                      spec:
+                        template:
+                          spec:
+                            containers:
+                              - name: hello-jboss-migration
+                                image: $(tasks.build-migration.results.IMAGE_URL)@$(tasks.build-migration.results.IMAGE_DIGEST)
+                      EOF
+
+                      oc apply -k .
+
     - name: Create TriggerBinding
       kubernetes.core.k8s:
         state: present
