@@ -247,6 +247,7 @@
                   name: openshift-client
                   kind: ClusterTask
                 runAfter:
+                  - build-jboss
                   - build-migration
                 workspaces:
                   - name: manifest-dir
@@ -264,14 +265,14 @@
                       - ../../base
 
                       patches:
-                        - path: ./patch-deployment.yaml
-                          target:
-                            kind: Deployment
-                            name: "hello-jboss"
-                        - path: ./patch-job.yaml
-                          target:
-                            kind: Job
-                            name: "hello-jboss-migration"
+                      - path: ./patch-deployment.yaml
+                        target:
+                          kind: Deployment
+                          name: "hello-jboss"
+                      - path: ./patch-job.yaml
+                        target:
+                          kind: Job
+                          name: "hello-jboss-migration"
                       EOF
 
                       cat <<EOF > patch-deployment.yaml
