@@ -1,0 +1,454 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: buildah-s2i-multistage
+spec:
+  params:
+    - name: BUILDAH_IMAGE
+      default: registry.access.redhat.com/ubi8/buildah:8.5-4
+      description: The location of the buildah builder image.
+      type: string
+    - name: S2I_IMAGE
+      default: quay.io/gmagnotta/gcc-arm64-11.2-2022.02
+      description: The S2I builder image.
+      type: string
+    - name: IMAGE
+      description: Reference of the image buildah will produce.
+      type: string
+    - name: CONTEXT
+      default: .
+      description: Path to the directory to use as context.
+      type: string
+    - name: PUSH_EXTRA_ARGS
+      default: ''
+      description: Extra parameters passed for the push command when pushing images.
+      type: string
+    - name: TLSVERIFY
+      default: 'true'
+      description: >-
+        Verify the TLS on the registry endpoint (for push/pull to a non-TLS
+        registry)
+      type: string
+    - name: INCREMENTAL
+      type: string
+      default: "false"
+    - name: USER
+      type: string
+      default: "jboss"
+    - name: S2I_SCRIPTS_URL
+      type: string
+      default: "/usr/local/s2i"
+    - name: RUNTIME_IMAGE
+      description: Reference of the image buildah will produce.
+      type: string
+    - name: RUNTIME_ARCH
+      description: The architecture qualifiers for the runtime image
+      default: "--arch amd64"
+      type: string
+    - name: RUNTIME_ARTIFACT
+      description: The built artifact to copy.
+      type: string
+  results:
+    - description: Digest of the image just built.
+      name: IMAGE_DIGEST
+  workspaces:
+    - name: source
+    - name: artifacts
+    - name: varlibcontainers
+      mountPath: /var/lib/containers
+    - name: s2ienv
+  steps:
+    - name: build
+      image: $(params.BUILDAH_IMAGE)
+      env:
+        - name: INCREMENTAL
+          value: $(params.INCREMENTAL)
+        - name: BUILDER_IMAGE
+          value: $(params.S2I_IMAGE)
+        - name: ASSEMBLE_USER
+          value: $(params.USER)
+        - name: CONTEXT_DIR
+          value: $(params.CONTEXT)
+        - name: SCRIPTS_URL
+          value: $(params.S2I_SCRIPTS_URL)
+        - name: RUNTIME_IMAGE
+          value: $(params.RUNTIME_IMAGE)
+        - name: RUNTIME_ARCH
+          value: $(params.RUNTIME_ARCH)
+        - name: RUNTIME_ARTIFACT
+          value: $(params.RUNTIME_ARTIFACT)
+      script: |
+        #!/usr/bin/env bash
+        set -e
+
+        echo "Start"
+        builder=$(buildah from --tls-verify=$(params.TLSVERIFY) $BUILDER_IMAGE)
+
+        buildah add --chown $ASSEMBLE_USER:0 $builder $(workspaces.source.path)/$CONTEXT_DIR /tmp/src
+
+        if [ "$INCREMENTAL" = "true" ]; then
+
+          if [ -f "$(workspaces.artifacts.path)/artifacts.tar" ]; then
+           echo "Restoring artifacts"
+           buildah add --chown $ASSEMBLE_USER:0 $builder $(workspaces.artifacts.path)/artifacts.tar /tmp/artifacts
+          fi
+
+        fi
+
+        ENV=""
+        if [ -f "$(workspaces.source.path)/$CONTEXT_DIR/.s2i/environment" ]; then
+
+            while IFS="" read -r line
+            do
+              [[ "$line" =~ ^#.*$ ]] && continue
+              ENV+="-e $line "
+            done < $(workspaces.source.path)/$CONTEXT_DIR/.s2i/environment
+
+            echo "ENV is $ENV"
+
+        fi
+
+        if [ -f "$(workspaces.s2ienv.path)/environment" ]; then
+
+            while IFS="" read -r line
+            do
+              [[ "$line" =~ ^#.*$ ]] && continue
+              ENV+="-e $line "
+            done < $(workspaces.s2ienv.path)/environment
+
+            echo "ENV is $ENV"
+
+        fi
+
+        if [ -x "$(workspaces.source.path)/$CONTEXT_DIR/.s2i/bin/assemble" ]; then
+          echo "Using assemble from .s2i"
+          eval buildah run $ENV $builder -- /tmp/src/.s2i/bin/assemble
+        else
+          echo "Using assemble from image"
+          eval buildah run $ENV $builder -- $SCRIPTS_URL/assemble
+        fi
+
+        if [ "$INCREMENTAL" = "true" ]; then
+
+          echo "saving artifacts"
+          if [ -f "$(workspaces.artifacts.path)/artifacts.tar" ]; then
+            rm $(workspaces.artifacts.path)/artifacts.tar
+          fi
+
+          buildah run $builder -- /bin/bash -c "if [ -x \"$SCRIPTS_URL/save-artifacts\" ]; then $SCRIPTS_URL/save-artifacts ; fi" > $(workspaces.artifacts.path)/artifacts.tar
+
+        fi
+        
+        if [ ! -z "$RUNTIME_IMAGE" ]; then
+          echo "Creating Runtime Image"
+          runner=$(buildah from $RUNTIME_ARCH $RUNTIME_IMAGE)
+          buildah copy --chown $ASSEMBLE_USER:0 --from $builder $runner $RUNTIME_ARTIFACT $RUNTIME_ARTIFACT
+          buildah config --workingdir /deployments $runner
+          buildah config --entrypoint '["./hello"]' $runner
+          buildah config --cmd '[]' $runner
+          buildah commit $runner $(params.IMAGE)
+          buildah rm $runner
+        else
+          echo "Not creating runtime image"
+          buildah config --cmd $SCRIPTS_URL/run $builder
+          buildah commit $builder $(params.IMAGE)
+        fi
+
+        buildah rm $builder
+      securityContext:
+        privileged: true
+    - name: push
+      image: $(params.BUILDAH_IMAGE)
+      script: |
+        buildah push \
+          $(params.PUSH_EXTRA_ARGS) --tls-verify=$(params.TLSVERIFY) \
+          --digestfile $(results.IMAGE_DIGEST.path) $(params.IMAGE) \
+          docker://$(params.IMAGE)
+
+          cat $(results.IMAGE_DIGEST.path)
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: crosscompile-source-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: crosscompile-artifacts-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 4Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: crosscompile-varlibcontainers-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 4Gi
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: crosscompile-pipelineconfig
+data:
+  dev-image-path: 'image-registry.openshift-image-registry.svc:5000/crosscompile/crosscompile'
+  release-image-path: 'quay.io/gmagnotta/crosscompile'
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: crosscompile-s2ienvironment
+data:
+  environment: |
+    MAVEN_REPOS="nexus"
+    NEXUS_MAVEN_REPO_ID="nexus"
+    NEXUS_MAVEN_REPO_URL="http://nexus3:8081"
+    NEXUS_MAVEN_REPO_USERNAME="myuser"
+    NEXUS_MAVEN_REPO_PASSWORD="mypass"
+    #MAVEN_MIRRORS="nexus"
+    #NEXUS_MAVEN_MIRROR_ID="nexus"
+    #NEXUS_MAVEN_MIRROR_OF="<![CDATA[*]]>"
+    #NEXUS_MAVEN_MIRROR_URL="http://nexus3:8081/"
+---
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: gcc-arm64-11.2-2022.02
+spec:
+  lookupPolicy:
+    local: true
+  tags:
+  - annotations:
+      description: Cross compile toolchain
+    from:
+      kind: DockerImage
+      name: 'quay.io/gmagnotta/gcc-arm64-11.2-2022.02'
+    name: latest
+    referencePolicy:
+      type: Local
+---
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: crosscompile-dev-pipeline
+spec:
+  params:
+    - name: repo-url
+  workspaces:
+    - name: src
+    - name: artifacts
+    - name: varlibcontainers
+    - name: empty
+    - name: s2ienv
+  tasks:
+    - name: fetch-repository
+      taskRef:
+        name: git-clone
+      workspaces:
+        - name: output
+          workspace: src
+      params:
+        - name: url
+          value: $(params.repo-url)
+        - name: deleteExisting
+          value: "true"
+    - name: get-dev-path
+      taskRef:
+        name: get-configmap-value
+      runAfter:
+        - fetch-repository
+      params:
+        - name: CONFIGMAP-NAME
+          value: "crosscompile-pipelineconfig"
+        - name: CONFIGMAP-KEY
+          value: "dev-image-path"
+    - name: build
+      taskRef:
+        name: buildah-s2i-multistage
+      runAfter:
+        - get-dev-path
+      workspaces:
+        - name: source
+          workspace: src
+        - name: varlibcontainers
+          workspace: varlibcontainers
+        - name: artifacts
+          workspace: artifacts
+        - name: s2ienv
+          workspace: s2ienv
+      params:
+        - name: USER
+          value: nobody
+        - name: S2I_IMAGE
+          value: "image-registry.openshift-image-registry.svc:5000/giuseppe/gcc-arm64-11.2-2022.02"
+        - name: S2I_SCRIPTS_URL
+          value: /s2i
+        - name: TLSVERIFY
+          value: "false"
+        - name: IMAGE
+          value: $(tasks.get-dev-path.results.VALUE)
+        - name: CONTEXT
+          value: "."
+        - name: INCREMENTAL
+          value: "false"
+        - name: RUNTIME_IMAGE
+          value: "registry.access.redhat.com/ubi8/ubi"
+        - name: RUNTIME_ARTIFACT
+          value: "/deployments"
+        - name: RUNTIME_ARCH
+          value: '--arch arm64'
+    - name: update-built-image
+      taskRef:
+        name: set-configmap-value
+      runAfter:
+        - build
+      params:
+        - name: CONFIGMAP-NAME
+          value: "crosscompile-pipelineconfig"
+        - name: CONFIGMAP-KEY
+          value: "dev-latest-built-image"
+        - name: VALUE
+          value: $(tasks.get-dev-path.results.VALUE)@$(tasks.build.results.IMAGE_DIGEST)
+---
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: crosscompile-release-pipeline
+spec:
+  params:
+    - name: image-tag
+  workspaces:
+    - name: empty
+  tasks:
+    - name: get-image-built
+      taskRef:
+        name: get-configmap-value
+      params:
+        - name: CONFIGMAP-NAME
+          value: "crosscompile-pipelineconfig"
+        - name: CONFIGMAP-KEY
+          value: "dev-latest-built-image"
+    - name: getpushpath
+      taskRef:
+        name: get-configmap-value
+      params:
+        - name: CONFIGMAP-NAME
+          value: "crosscompile-pipelineconfig"
+        - name: CONFIGMAP-KEY
+          value: "release-image-path"
+    - name: copy
+      taskRef:
+        name: skopeo-copy
+        kind: ClusterTask
+      runAfter:
+        - getpushpath
+        - get-image-built
+      workspaces:
+        - name: images-url
+          workspace: empty
+      params:
+        - name: srcImageURL
+          value: "docker://$(tasks.get-image-built.results.VALUE)"
+        - name: destImageURL
+          value: "docker://$(tasks.getpushpath.results.VALUE):$(params.image-tag)"
+        - name: srcTLSverify
+          value: "false"
+        - name: destTLSverify
+          value: "false"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: remote-ssh-secret
+data:
+  privatekey: LS0tLS1CRUdJTiBPUEVOU1NIIFBSSVZBVEUgS0VZLS0tLS0KYjNCbGJuTnphQzFyWlhrdGRqRUFBQUFBQkc1dmJtVUFBQUFFYm05dVpRQUFBQUFBQUFBQkFBQUJsd0FBQUFkemMyZ3RjbgpOaEFBQUFBd0VBQVFBQUFZRUF5VWlFWFJPcmlFWVBZTFdZSlVkOG01M05jVU0zRTNuMnhoN2IySitrQVZmRDhTUGpnNVNJCmd2Y2VaZXBYbUdCekhwOEE0Tkk1OVdhaWNvbm01VDJCZE5SaHpyVUYrR1d3cEc5ZTdCSkROeHZxbVo4L3BhOWM3OVlnSDUKU29JSkNvU2V3ZzI5bmFWM0JoOVJyUnAzZ3lFUlVRZS8xUGtzS053bTFzc2NTbEpHL3pocTI0NnA2YVoreGJRSGxxNlppVApwenJQcVdlc2NEcnlnRzVLeGdYak1VQzM0L0Izcm8wcDZMMGE3MmdwTTZvTFcxdkQ4R1BPR211dTZwNXBpSURQbXRpUFlvCkZFdGdBaXNXdXlEK3V5cS9jSWwzZkZER3VEMmhra0czenpWSW1LWUZOeW53T1lzLzJaRkNobEtQaEYrUmVUZFVjSlRxdi8KcDE4WlVXK1MwNjdVRGgvbmt6ZnNmRGhtZC9Ra3VUY0pBWWU0clZqT3QyUWs0a0RVQkhQMUpyRGdQMlBlcklJbzQ0bHErWApLY25ic3dPdXhpWlpLR0pJNHNFdFlHZkMxYng2NmRycFhla2FCNXZTV3kyV2tMR1h3TXJXNTBnWnpINEE5NVhuS2dFRXEvCngwL1hsOStvaHpxdSs5K1h5R04wb0RQQnNOMFZMVmZ6N09HajBSMXhBQUFGaUtQT0NuT2p6Z3B6QUFBQUIzTnphQzF5YzIKRUFBQUdCQU1sSWhGMFRxNGhHRDJDMW1DVkhmSnVkelhGRE54TjU5c1llMjlpZnBBRlh3L0VqNDRPVWlJTDNIbVhxVjVoZwpjeDZmQU9EU09mVm1vbktKNXVVOWdYVFVZYzYxQmZobHNLUnZYdXdTUXpjYjZwbWZQNld2WE8vV0lCK1VxQ0NRcUVuc0lOCnZaMmxkd1lmVWEwYWQ0TWhFVkVIdjlUNUxDamNKdGJMSEVwU1J2ODRhdHVPcWVtbWZzVzBCNWF1bVlrNmM2ejZsbnJIQTYKOG9CdVNzWUY0ekZBdCtQd2Q2Nk5LZWk5R3U5b0tUT3FDMXRidy9CanpocHJydXFlYVlpQXo1cllqMktCUkxZQUlyRnJzZwovcnNxdjNDSmQzeFF4cmc5b1pKQnQ4ODFTSmltQlRjcDhEbUxQOW1SUW9aU2o0UmZrWGszVkhDVTZyLzZkZkdWRnZrdE91CjFBNGY1NU0zN0h3NFpuZjBKTGszQ1FHSHVLMVl6cmRrSk9KQTFBUno5U2F3NEQ5ajNxeUNLT09KYXZseW5KMjdNRHJzWW0KV1NoaVNPTEJMV0Jud3RXOGV1bmE2VjNwR2dlYjBsc3RscEN4bDhESzF1ZElHY3grQVBlVjV5b0JCS3Y4ZFAxNWZmcUljNgpydnZmbDhoamRLQXp3YkRkRlMxWDgremhvOUVkY1FBQUFBTUJBQUVBQUFHQVlZWFNJK3FvM0dEZGlJVFRqNVJnU21HZHJYCmZja29Jd1QzT2FIdzNSLzVpUFppRjJWVVU5RXY4NmFqU3RkaldjOFVRbXY4YjdyK3VuWDRsekpyU3pLWERSWnI2TWd2cDYKS0dHUmd4MmlGV3hnTVVoWUpTV2ZDTkVkUlUvWVdkYmN3dHcyVzI3ay9DS0dRNlJYMmlWQlZNZDQ4aW9jU01ZY3V3d2JjdApJTkZXZHNmVjlrVGNERW5QK0dndW1SSkZiNWl6ZlNiNGk4b3EvYzJOOFhPWFNXekVGSUY1ZGwxVnV0NTRiZ0t3aXpsY1dZCnRRMzBGRisyOTFRZkxxdk1CQWdzTWM1NXJ1ZGJSbWhXcTN4LzZpWGFTZENlUWN2Sm90Y0Z2V3RPcmE3YUJERnNFSHYwemMKKzErV0U2UWtQd29UTkZPaGtENEhDYk1oWVBmQkp3WkVzNW5CTlh5TDU1ZGhrcTg2b3kvT21FaDJKdjZTTlFMd2NxTURRaAowc1RvZ3VvL1pocWdUc1F3bzl4RFlJa003VGpSMkNpSkRzSFdQQWRjUDJQUllsWEY0UWUwdUVZZGovTHMrNXFKWGUrc21XCk9vcS9wY2V5VGtaYlBaQUg2VStRYmJjT1BQcEVXREd2Z1lKTlY4N2NybWc4WjJ1T1VuR2VWakxZcFVMQXA4Rlg3RkFBQUEKd0RnWU1veVNrRVkrSEh0ZE1MK2pwc1I4RVlwN2FCQ3JkcC95d2VNOVhBK1M2a29yZXpueXJZSVU4RFcreVBhSE1uakJJUApNS3F4U3VJSTFuRE0wekNnM2NielJvVzlPWXYzNlJwMmMrTHZ4dExMVWNxbnJVSitmWUhCZjhEajVweEk5aFczV29SV2t1CjBTQko5TGhyOXBYWWhubUxZTWlBY05xdWw0Y1RCZFkydldvSFNpUDA2WS9TRm1lbytjWnU0dEZEUGNsT20wbTZlS3JFNzEKTnhRTW15b0s2QzhPNENFTmhnU2hqcDU1ZElZdU1ad2R4NVRCNmtlTEMxajY2WTd3QUFBTUVBOEVZbkEwWms5aDh0MUlCTgpaN0pNdXRVVTdaazA0aFpNNTM3SzBMalVWVXQrZnF0RjMyZHNPamdYUzliWDJ6VWVwNkdQMzVVTXhpY1lMZE5ZVVFNNXpsClRZUUpFR0FaVVhScmpaZWJxL1FTSEJ5cjRNMk9ncm0xbWJITkVaUE9oeXQ2c1g3a21oaWtjY2NrMVhnd0l6c0lzSnV4aVUKcGpDNUNmdXpQSVFMbWFHS2JZcy9MUmwxbDlOK0VLMUhIZmJZYlJIbk4xMm8zM0dlTWp6Znp3TGpZUFZSSk1xaG1DSmlweAp6ZVdnMG5obXlFU0pDOXFrUDlsR3VtampYRk5iRVhBQUFBd1FEV2RSQzNZK0NJa1Irb29HTVVhOVQrWjJBR1Q0RGg0MitPCm5XRWc3VW9NaXFDaFlHa2FyVWFFRk51OHBKSFJSak9pWTBEZXdtVmlrNFEwRnlWcEs3clFOclprL3pvRjU0djlPUUEvODUKVDdCN2NTcEp0R2ZFa0xHNTh2Y05rV09laTlsS3lVWHFiUUlqMDhqNGhTam1CcnlVWkxYZ1hNRzRVL1JWbTliRHlxa0x6ZAp1ekM2V2w4ek9VcVZRRGIyNHdkQzVWbUJ3c243NWpWOHhvQ3pGTG9SRkFMTlJldGM3K2NnOHFURmRWMmFzcHVBSm9iZ0dOCkE5T0JzSzJlTkVhcmNBQUFBUFoybDFjMlZ3Y0dWQWJHVnViM1p2QVFJREJBPT0KLS0tLS1FTkQgT1BFTlNTSCBQUklWQVRFIEtFWS0tLS0tCg==
+---
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: crosscompile-deploy-pipeline
+spec:
+  params:
+    - name: host
+    - name: port
+    - name: username
+  workspaces:
+    - name: credentials
+  tasks:
+    - name: remote-ssh-commands-run
+      taskRef:
+        name: remote-ssh-commands
+      workspaces:
+        - name: credentials
+          workspace: credentials
+      params:
+        - name: HOST
+          value: "$(params.host)"
+        - name: PORT
+          value: "$(params.port)"
+        - name: USERNAME
+          value: "$(params.username)"
+        - name: SSH_SCRIPT
+          value: |
+            #!/bin/sh
+
+            cat >/tmp/xcompile_deployment.yaml<<EOF
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: xcompile
+              labels:
+                app: xcompile
+            spec:
+              replicas: 1
+              selector:
+                matchLabels:
+                  app: xcompile
+              template:
+                metadata:
+                  labels:
+                    app: xcompile
+                spec:
+                  containers:
+                    - name: xcompile
+                      image: quay.io/gmagnotta/crosscompile:arm64
+                      command: ["/deployments/hello"]
+                      ports:
+                        - containerPort: 8080
+                          protocol: TCP
+                      resources:
+                        requests:
+                          cpu: "500m"
+                          memory: "128Mi"
+                        limits:
+                          cpu: "1000m"
+                          memory: "2048Mi"
+                      imagePullPolicy: Always
+                  restartPolicy: Always
+                  terminationGracePeriodSeconds: 30
+                  dnsPolicy: ClusterFirst
+                  securityContext: {}
+                  schedulerName: default-scheduler
+              strategy:
+                type: RollingUpdate
+                rollingUpdate:
+                  maxUnavailable: 25%
+                  maxSurge: 25%
+              revisionHistoryLimit: 10
+              progressDeadlineSeconds: 600
+            EOF
+            oc apply -f /tmp/xcompile_deployment.yaml
