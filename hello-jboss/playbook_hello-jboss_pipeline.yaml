@@ -9,8 +9,8 @@
     webhook_password: "mywebhookpassword"
     gitrepo: "https://github.com/gmagnotta/examples"
     repocontext: "jboss-eap-test"
-    hostname_https: "hello-jboss-project.localdomain"
-    hostname_http: "secure-hello-jboss-project.localdomain"
+    hostname_http: "hello-jboss-project.localdomain"
+    hostname_https: "secure-hello-jboss-project.localdomain"
     password: "password"
     database_username: "jboss"
     database_password: "jboss"
@@ -22,9 +22,9 @@
     sso_client: "hello-jboss"
     sso_username: ""
     sso_password: ""
-    ocp_postgresql_service_host: "postgresql.localdomain"
+    ocp_postgresql_service_host: "postgresql"
     ocp_postgresql_service_port: "5432"
-    amq_service_host: "amqbroker.localdomain"
+    amq_service_host: "amqbroker"
     amq_service_port: "61616"
     mq_queues: "getTopItemsCommand,getTopOrdersCommand,createOrderCommand,invalidMessage"
     mq_username: "user"
@@ -51,7 +51,7 @@
       when: eapsslsecret.failed == true
 
     - name: Import https certificate in OpenShift
-      command: "oc create secret generic eap-ssl-secret --from-file=eapkeystore.jks"
+      command: "oc create secret generic eap-ssl-secret -n {{ project }} --from-file=eapkeystore.jks"
       when: eapsslsecret.failed == true
 
 
@@ -65,7 +65,7 @@
       when: eapjgroupsecret.failed == true
 
     - name: Import jgroups certificate in OpenShift
-      command: "oc create secret generic eap-jgroup-secret --from-file=eapjgroups.jceks"
+      command: "oc create secret generic eap-jgroup-secret -n {{ project }} --from-file=eapjgroups.jceks"
       when: eapjgroupsecret.failed == true
 
 
