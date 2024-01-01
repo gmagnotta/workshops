@@ -71,18 +71,25 @@
             env: |
               MAVEN_CLEAR_REPO=true
               #MAVEN_S2I_GOALS=clean package sonar:sonar
-              #MAVEN_ARGS_APPEND=-Dsonar.projectKey=hello-tomcat -Dsonar.projectName=''''hello-tomcat'''' -Dsonar.host.url=http://sonarqube  -Dsonar.token=sqp_ae716219200c705ff2ff1698f2e2c860573d12aa
-              #MAVEN REPO TO PUSH ARTIFACTS TO
-              #MAVEN_REPOS=nexus
-              #NEXUS_MAVEN_REPO_ID=nexus
-              #NEXUS_MAVEN_REPO_URL=http://nexus3:8081
-              #NEXUS_MAVEN_REPO_USERNAME=myuser
-              #NEXUS_MAVEN_REPO_PASSWORD=mypass
-              #MAVEN MIRROR
-              #MAVEN_MIRRORS=dev
-              #DEV_MAVEN_MIRROR_ID=nexus
-              #DEV_MAVEN_MIRROR_URL=http://nexus3:8081/repository/maven-group/
-              #DEV_MAVEN_MIRROR_OF=<![CDATA[*]]>
+              #MAVEN_ARGS_APPEND=-Dsonar.projectKey=hello-tomcat -Dsonar.projectName='hello-tomcat' -Dsonar.host.url=http://sonarqube  -Dsonar.token=sqp_ae716219200c705ff2ff1698f2e2c860573d12aa
+              #
+              # MAVEN REPO TO PUSH ARTIFACTS
+              #
+              MAVEN_REPOS=nexus
+              NEXUS_MAVEN_REPO_ID=nexus
+              NEXUS_MAVEN_REPO_URL=${env.NEXUS_HOST}
+              NEXUS_MAVEN_REPO_USERNAME=${env.NEXUS_USERNAME}
+              NEXUS_MAVEN_REPO_PASSWORD=${env.NEXUS_PASSWORD}
+              #
+              # MAVEN MIRROR
+              #
+              NEXUS_HOST=http://nexus3:8081
+              NEXUS_USERNAME=myuser
+              NEXUS_PASSWORD=mypass
+              MAVEN_MIRRORS=dev
+              DEV_MAVEN_MIRROR_ID=nexus
+              DEV_MAVEN_MIRROR_URL=${env.NEXUS_HOST}/repository/maven-group/
+              DEV_MAVEN_MIRROR_OF=<![CDATA[*]]>
 
     - name: Create Pipeline
       kubernetes.core.k8s:
