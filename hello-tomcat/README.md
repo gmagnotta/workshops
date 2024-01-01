@@ -1,5 +1,7 @@
-# Example project to show how to build and deploy a Tekton Pipeline
-to build and deploy the application https://github.com/gmagnotta/examples/tree/master/hello-tomcat
+## Hello Tomcat!
+
+Example project to show how to build and deploy a Tekton Pipeline to build and
+deploy the application https://github.com/gmagnotta/examples/tree/master/hello-tomcat
 
 ---
 How to use:

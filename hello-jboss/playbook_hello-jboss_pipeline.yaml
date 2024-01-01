@@ -7,6 +7,8 @@
   vars:
     project: "hello-jboss"
     webhook_password: "mywebhookpassword"
+    gitrepo: "https://github.com/gmagnotta/examples"
+    repocontext: "jboss-eap-test"
     hostname_https: "hello-jboss-project.localdomain"
     hostname_http: "secure-hello-jboss-project.localdomain"
     password: "password"
@@ -245,7 +247,7 @@
                     workspace: src
                 params:
                   - name: url
-                    value: 'https://github.com/gmagnotta/examples'
+                    value: "{{ gitrepo }}"
                   - name: deleteExisting
                     value: "true"
               - name: build-jboss
@@ -270,7 +272,7 @@
                   - name: OUTPUT_IMAGE
                     value: "image-registry.openshift-image-registry.svc:5000/{{ project }}/hello-jboss"
                   - name: PATH_CONTEXT
-                    value: "jboss-eap-test"
+                    value: "{{ repocontext }}"
               - name: build-migration
                 taskRef:
                   name: buildah-s2i
@@ -293,7 +295,7 @@
                   - name: OUTPUT_IMAGE
                     value: "image-registry.openshift-image-registry.svc:5000/{{ project }}/hello-jboss-migration"
                   - name: PATH_CONTEXT
-                    value: "jboss-eap-test/src/main/resources/db"
+                    value: "{{ repocontext }}/src/main/resources/db"
               - name: deploy
                 taskRef:
                   name: openshift-client
@@ -307,7 +309,7 @@
                 params:
                   - name: SCRIPT
                     value: |
-                      cd $(workspaces.manifest-dir.path)/jboss-eap-test/k8s/overlay/dev
+                      cd $(workspaces.manifest-dir.path)/{{ repocontext }}/k8s/overlay/dev
                       
                       cat <<EOF > kustomization.yaml
                       apiVersion: kustomize.config.k8s.io/v1beta1
@@ -383,7 +385,7 @@
                     workspace: src
                 params:
                   - name: url
-                    value: 'https://github.com/gmagnotta/examples'
+                    value: '{{ gitrepo }}'
                   - name: deleteExisting
                     value: "true"
               - name: build-jboss
@@ -408,7 +410,7 @@
                   - name: OUTPUT_IMAGE
                     value: "image-registry.openshift-image-registry.svc:5000/{{ project }}/hello-jboss"
                   - name: PATH_CONTEXT
-                    value: "jboss-eap-test"
+                    value: "{{ repocontext }}"
               - name: build-migration
                 taskRef:
                   name: buildah-s2i
@@ -431,7 +433,7 @@
                   - name: OUTPUT_IMAGE
                     value: "image-registry.openshift-image-registry.svc:5000/{{ project }}/hello-jboss-migration"
                   - name: PATH_CONTEXT
-                    value: "jboss-eap-test/src/main/resources/db"
+                    value: "{{ repocontext }}/src/main/resources/db"
               - name: vuln-scan
                 taskRef:
                   name: vulnerability-scan
@@ -461,7 +463,7 @@
                 params:
                   - name: SCRIPT
                     value: |
-                      cd $(workspaces.manifest-dir.path)/jboss-eap-test/k8s/overlay/dev
+                      cd $(workspaces.manifest-dir.path)/{{ repocontext }}/k8s/overlay/dev
                       
                       cat <<EOF > kustomization.yaml
                       apiVersion: kustomize.config.k8s.io/v1beta1

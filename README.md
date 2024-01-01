@@ -1,1 +1,3 @@
-# This repo contains usefult resources to conduct customer workshops
+# Workshops
+
+## This repo contains useful resources to conduct customer workshops

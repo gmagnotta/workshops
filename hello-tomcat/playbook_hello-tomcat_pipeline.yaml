@@ -7,6 +7,8 @@
   vars:
     project: "hello-tomcat"
     webhook_password: "mywebhookpassword"
+    gitrepo: "https://github.com/gmagnotta/examples"
+    repocontext: "hello-tomcat"
   tasks:
 
     - name: Check if secret is linked
@@ -68,6 +70,8 @@
           data:
             env: |
               MAVEN_CLEAR_REPO=true
+              #MAVEN_S2I_GOALS=clean package sonar:sonar
+              #MAVEN_ARGS_APPEND=-Dsonar.projectKey=hello-tomcat -Dsonar.projectName=''''hello-tomcat'''' -Dsonar.host.url=http://sonarqube  -Dsonar.token=sqp_ae716219200c705ff2ff1698f2e2c860573d12aa
               #MAVEN REPO TO PUSH ARTIFACTS TO
               #MAVEN_REPOS=nexus
               #NEXUS_MAVEN_REPO_ID=nexus
@@ -105,7 +109,7 @@
                     workspace: src
                 params:
                   - name: url
-                    value: 'https://github.com/gmagnotta/examples'
+                    value: "{{ gitrepo }}"
                   - name: deleteExisting
                     value: "true"
               - name: build
@@ -130,7 +134,7 @@
                   - name: OUTPUT_IMAGE
                     value: "image-registry.openshift-image-registry.svc:5000/{{ project }}/hello-tomcat"
                   - name: PATH_CONTEXT
-                    value: "hello-tomcat"
+                    value: "{{ repocontext }}"
               - name: deploy
                 taskRef:
                   name: openshift-client
@@ -143,7 +147,7 @@
                 params:
                   - name: SCRIPT
                     value: |
-                      cd $(workspaces.manifest-dir.path)/hello-tomcat/k8s/overlay/dev
+                      cd $(workspaces.manifest-dir.path)/{{ repocontext }}/k8s/overlay/dev
                       
                       cat <<EOF > kustomization.yaml
                       apiVersion: kustomize.config.k8s.io/v1beta1
