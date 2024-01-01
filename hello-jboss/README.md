@@ -16,6 +16,8 @@ If not already available, deploy a PostgreSQL database and then create an user a
 
 If not already available, deploy an AMQ Broker and then create an user dedicated to this JavaEE application
 
+If not already available, deploy SSO and then create a realm for this JavaEE application.
+
 Customize the variables in playbook_hello-jboss_pipeline.yaml to reflect the environment (username, passwords, urls, etc) 
 
 Run ansible playbook playbook_hello-jboss_pipeline.yaml
