@@ -8,7 +8,7 @@
     project: "hello-jboss"
     webhook_password: "mywebhookpassword"
     gitrepo: "https://github.com/gmagnotta/examples"
-    repocontext: "jboss-eap-test"
+    repocontext: "hello-jboss"
     hostname_http: "hello-jboss-project.localdomain"
     hostname_https: "secure-hello-jboss-project.localdomain"
     password: "password"
