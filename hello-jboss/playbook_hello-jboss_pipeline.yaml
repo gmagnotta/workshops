@@ -321,7 +321,7 @@
                   - name: IMAGETOSCAN
                     value: "$(tasks.build-migration.results.IMAGE_URL)@$(tasks.build-migration.results.IMAGE_DIGEST)"
                   - name: SBOMFILE
-                    value: ""$(workspaces.source.path)/migration-sbom.cdx""
+                    value: "$(workspaces.source.path)/migration-sbom.cdx"
               - name: vuln-scan
                 taskRef:
                   name: vulnerability-sbom
