@@ -9,7 +9,7 @@
 - name: Deploy 3scale in OpenShift cluster
   hosts: localhost
   vars:
-    project: "3scale-project"
+    project: "hello-3scale"
     wildcard_domain: "example.com"
   tasks:
 
@@ -146,14 +146,17 @@
             wildcardDomain: "{{ wildcard_domain }}"
             resourceRequirementsEnabled: false
     
-    - name: Wait for APIManager
+    - name: Wait for installation
       kubernetes.core.k8s_info:
-        api_version: apps.3scale.net/v1alpha1
-        kind: APIManager
-        name: apimanager-sample
+        api_version: v1
+        kind: Secret
+        name: system-seed
         namespace: "{{ project }}"
+        wait: yes
+        wait_sleep: 10
+        wait_timeout: 360
       register: result
-      until: result.resources[0].status.conditions[0].type == "Available"
+      until: result.api_found == true
       retries: 5
       delay: 10
 
