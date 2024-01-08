@@ -26,6 +26,11 @@
             sourceNamespace: openshift-marketplace
             startingCSV: amq-broker-operator.v7.11.4-opr-1
 
+    - name: Wait for Operator Installation
+      ansible.builtin.pause:
+        minutes: 5
+        prompt: "check that operator is installed"
+
     - name: Create ActiveMQArtemis
       kubernetes.core.k8s:
         state: present
