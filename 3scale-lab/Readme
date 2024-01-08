@@ -2,17 +2,17 @@
 
 This lab is used to demonstrate on how 3scale works inside OCP.
 
+## FIX SSL for S3 for Developer Portal
+After deployment, you need to manual fixes custom S3 certificate for
+Developer portal. See https://access.redhat.com/solutions/6980338
 
 ## Configure Zync to use SSO
 
-Ansible playbook will import custom SSO cert inside zync. By the way, you must
-configure 3scale to have a client inside SSO.
+Ansible playbook will import custom SSO cert inside zync. You must configure
+3scale to have a client inside SSO.
 
 See https://access.redhat.com/documentation/en-us/red_hat_3scale_api_management/2.14/html/administering_the_api_gateway/integrating-threescale-with-an-openid-connect-identity-provider#configuring-rhsso-to-have-a-threescale-client_3scale-rhsso
 
-
-## FIX SSL for S3 for Developer Portal
-A manual fix is still required to import custom S3 certificate for Developer portal. See https://access.redhat.com/solutions/6980338
 
 
 ## How To test authentication for Standard Flow
