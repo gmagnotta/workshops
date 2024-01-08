@@ -9,8 +9,9 @@
 - name: Deploy 3scale in OpenShift cluster
   hosts: localhost
   vars:
-    project: "hello-3scale"
-    wildcard_domain: "example.com"
+    project: "3scale"
+    wildcard_domain: "apps.localdomain"
+    sso_server: "sso-ingress.sso.localdomain"
   tasks:
 
     - name: Create Subscription
@@ -187,3 +188,22 @@
     - name: Print value
       ansible.builtin.debug:
         msg: "MASTER_PASSWORD={{ master_password.stdout }}"
+
+
+    - name: Export PEM Cert from SSO
+      shell: /usr/bin/openssl s_client -showcerts -connect {{ sso_server }}:443 </dev/null 2>/dev/null|openssl x509 -outform PEM >sso.pem
+
+    - name: Export Zync PEM
+      shell: oc exec dc/zync-que -n {{ project }} -- cat /etc/pki/tls/cert.pem > zync.pem
+
+    - name: Append PEM to Zync PEM
+      shell: cat sso.pem >> zync.pem
+
+    - name: Import updated Zync PEM
+      command: oc create configmap zync-ca-bundle -n {{ project }} --from-file=./zync.pem
+
+    - name: Modify dc/zync-que
+      command: oc set volume dc/zync-que -n {{ project }} --add --name=zync-ca-bundle --mount-path /etc/pki/tls/zync/zync.pem --sub-path zync.pem --source='{"configMap":{"name":"zync-ca-bundle","items":[{"key":"zync.pem","path":"zync.pem"}]}}'
+
+    - name: Modify dc/zync-que
+      command: oc set env dc/zync-que SSL_CERT_FILE=/etc/pki/tls/zync/zync.pem
