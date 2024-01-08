@@ -12,6 +12,7 @@
     project: "3scale"
     wildcard_domain: "apps.localdomain"
     sso_server: "sso-ingress.sso.localdomain"
+    s3_server: "s3.openshift-storage.svc"
   tasks:
 
     - name: Create Subscription
@@ -108,6 +109,11 @@
             AWS_PROTOCOL: "SFRUUFM="
             AWS_PATH_STYLE: "dHJ1ZQ=="
     
+    - name: Wait for Operator Installation
+      ansible.builtin.pause:
+        minutes: 5
+        prompt: "check that operator is installed"
+
     - name: Create APIManager
       kubernetes.core.k8s:
         state: present
@@ -206,4 +212,43 @@
       command: oc set volume dc/zync-que -n {{ project }} --add --name=zync-ca-bundle --mount-path /etc/pki/tls/zync/zync.pem --sub-path zync.pem --source='{"configMap":{"name":"zync-ca-bundle","items":[{"key":"zync.pem","path":"zync.pem"}]}}'
 
     - name: Modify dc/zync-que
-      command: oc set env dc/zync-que SSL_CERT_FILE=/etc/pki/tls/zync/zync.pem
+      command: oc set env dc/zync-que -n {{ project }} SSL_CERT_FILE=/etc/pki/tls/zync/zync.pem
+
+# https://access.redhat.com/solutions/6980338
+
+    - name: Export PEM Cert from S3
+      shell: oc rsh -n {{ project }} dc/zync-que  echo -n | openssl s_client -connect {{ s3_server }}:443 -servername {{ s3_server }} --showcerts | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' > /tmp/S3Certs.pem 2>/dev/null
+
+    - name: Copy PEM Cert locally
+      shell: oc rsh -n {{ project }} dc/zync-que cat /tmp/S3Certs.pem > S3Certs.pem 2>/dev/null
+
+    - name: Export Original Sidekiq PEM Cert
+      shell: oc rsh -n {{ project }} -c system-sidekiq dc/system-sidekiq cat /etc/pki/tls/cert.pem > SidekiqCerts.pem 2>/dev/null
+
+    - name: Append custom cert to Sidekiq cert
+      shell: cat S3Certs.pem >> SidekiqCerts.pem
+
+    - name: Create configmap
+      shell: oc create configmap sidekiqcerts -n {{ project }} --from-file=./SidekiqCerts.pem
+
+    - name: Set volume from configmap
+      shell: oc set volume dc/system-sidekiq -n {{ project }} --add --overwrite --name=customcerts --mount-path=/etc/pki/tls/custom/SidekiqCerts.pem --sub-path=SidekiqCerts.pem --source='{"configMap":{"name":"sidekiqcerts"}}'
+
+    - name: Set Env for sidekiq
+      shell: oc set env dc/system-sidekiq -n {{ project }} SSL_CERT_FILE=/etc/pki/tls/custom/SidekiqCerts.pem
+
+    
+    - name: Copy locally systemdeveloper certificate
+      shell: oc rsh -n {{ project }} -c system-developer dc/system-app cat /etc/pki/tls/cert.pem > SystemAppCerts.pem 2>/dev/null
+
+    - name: Append custom cert to systemdeveloper cert
+      shell: cat S3Certs.pem >> SystemAppCerts.pem
+
+    - name: Create configmap
+      shell: oc create configmap systemappcerts -n {{ project }} --from-file=./SystemAppCerts.pem
+
+    - name: Set volume for system-app
+      shell: oc set volume dc/system-app -n {{ project }} --add --overwrite --name=customcerts --mount-path=/etc/pki/tls/custom/SystemAppCerts.pem --sub-path=SystemAppCerts.pem --source='{"configMap":{"name":"systemappcerts"}}'
+
+    - name: Set ENV for system-app
+      shell: oc set env dc/system-app -n {{ project }} SSL_CERT_FILE=/etc/pki/tls/custom/SystemAppCerts.pem
