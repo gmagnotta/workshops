@@ -1,0 +1,69 @@
+# 3Scale lab
+
+This lab is used to demonstrate on how 3scale works inside OCP.
+
+
+## Configure Zync to use SSO
+
+Ansible playbook will import custom SSO cert inside zync. By the way, you must
+configure 3scale to have a client inside SSO.
+
+See https://access.redhat.com/documentation/en-us/red_hat_3scale_api_management/2.14/html/administering_the_api_gateway/integrating-threescale-with-an-openid-connect-identity-provider#configuring-rhsso-to-have-a-threescale-client_3scale-rhsso
+
+
+## FIX SSL for S3 for Developer Portal
+A manual fix is still required to import custom S3 certificate for Developer portal. See https://access.redhat.com/solutions/6980338
+
+
+## How To test authentication for Standard Flow
+
+1. Request OAuth Authorization Code:
+
+In the browser use the url:
+
+https://sso-ingress.localdomain/realms/3scale/protocol/openid-connect/auth?client_id=8fed5499&redirect_uri=http://localhost:8080/callback&response_type=code&scope=openid&state=fj8o3n7bdy1op5
+
+You will be asked to login. Pick an user that is in the realm.
+
+Browser will try to redirect to an url similar to:
+
+http://localhost:8080/callback?state=fj8o3n7bdy1op5&session_state=b2adaf38-8a5f-4dbf-a3da-a3036664fcf6&code=99998ace-3d97-4854-be69-9046c89d7563.b2adaf38-8a5f-4dbf-a3da-a3036664fcf6.cd48828c-dd08-4d67-8be5-99e06a333336
+
+Extract the code part from the url
+
+2. Exchanging Authorization Code for Access Token
+
+Send a curl post:
+
+curl --insecure --location --request POST 'https://sso-ingress.sso.apps.cluster-8lszn.dynamic.redhatworkshops.io/realms/3scale/protocol/openid-connect/token' \
+--header 'Content-Type: application/x-www-form-urlencoded' \
+--data-urlencode 'grant_type=authorization_code' \
+--data-urlencode 'client_id=8fed5499' \
+--data-urlencode 'client_secret=e5e6f95177cf8843767c05a4f2b6f41d' \
+--data-urlencode 'code=5c7b6cdd-d913-409a-ab31-3d9b5e3fb2c7.fcdfd5bc-8579-4887-8232-f2db9bfd3ad7.48715bf4-79d4-4802-a51b-82af0d4a2695' \
+--data-urlencode 'redirect_uri=http://localhost:8080/callback'
+
+You will receive a response similar to:
+
+{"access_token":"eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJlZ0E5WUhiSEN3YWx1NXZmcGVScDhuMFJzbHpCQTVJTTdSX1p1N0xDaWQ4In0.eyJleHAiOjE3MDQ0ODI4MDcsImlhdCI6MTcwNDQ4MjUwNywiYXV0aF90aW1lIjoxNzA0NDgyMDI5LCJqdGkiOiIxNjY2ZmYyYy03NzViLTRhOWYtYmQyNC0xN2Q3ODY3ODNhOTYiLCJpc3MiOiJodHRwczovL3Nzby1pbmdyZXNzLnNzby5hcHBzLmNsdXN0ZXItOGxzem4uZHluYW1pYy5yZWRoYXR3b3Jrc2hvcHMuaW8vcmVhbG1zLzNzY2FsZSIsImF1ZCI6ImFjY291bnQiLCJzdWIiOiJhMDg3MmRiYi05MzczLTQ1NGUtODdkMi0xM2E5MjZmMDJmZGMiLCJ0eXAiOiJCZWFyZXIiLCJhenAiOiIyOWVjOTczYyIsInNlc3Npb25fc3RhdGUiOiJiMmFkYWYzOC04YTVmLTRkYmYtYTNkYS1hMzAzNjY2NGZjZjYiLCJhY3IiOiIwIiwicmVhbG1fYWNjZXNzIjp7InJvbGVzIjpbIm9mZmxpbmVfYWNjZXNzIiwiZGVmYXVsdC1yb2xlcy0zc2NhbGUiLCJ1bWFfYXV0aG9yaXphdGlvbiJdfSwicmVzb3VyY2VfYWNjZXNzIjp7ImFjY291bnQiOnsicm9sZXMiOlsibWFuYWdlLWFjY291bnQiLCJtYW5hZ2UtYWNjb3VudC1saW5rcyIsInZpZXctcHJvZmlsZSJdfX0sInNjb3BlIjoib3BlbmlkIHByb2ZpbGUgZW1haWwiLCJzaWQiOiJiMmFkYWYzOC04YTVmLTRkYmYtYTNkYS1hMzAzNjY2NGZjZjYiLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwibmFtZSI6IkdpdXNlcHBlIE1hZ25vdHRhIiwicHJlZmVycmVkX3VzZXJuYW1lIjoiZ2l1c2VwcGUiLCJnaXZlbl9uYW1lIjoiR2l1c2VwcGUiLCJmYW1pbHlfbmFtZSI6Ik1hZ25vdHRhIiwiZW1haWwiOiJnbWFnbm90dEByZWRoYXQuY29tIn0.c-elX3cJDxMhjL-BXuyFcPw873SDk_JlIzmZ7HaHcTxei7-dsPQ11mnty96cxqBod9wmC-RAwuwmEt05GE1ge5FfdzzmyN6Ph3zmP2KwWQu0cEp3QNaejUFAnSm25lUhDXBI2wIxlSFp5BtYsH_Pw_GI_sh7P7atsuzEot9LrUrHCrIgwd_EY3vKNH8rOtCPXOwG_BJO0wPDRTprFfH37ZRFFetrdNaSVwCIFQqMrszUV1E7bQ5dptssvVgRXay-jITAO9mgpbBrOmAmp8tPfe9DzCohWKHhlDdbHCCR2kRYqdTeumy3iCvrJgjOPvkvkI9NRu2gsIV82SPL5bUOFA","expires_in":300,"refresh_expires_in":1767,"refresh_token":"eyJhbGciOiJIUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICI4N2E1NGU1ZS0wZTdjLTRmNmYtYTM2Yi04OGVlOTM1NTk3OWQifQ.eyJleHAiOjE3MDQ0ODQyNzQsImlhdCI6MTcwNDQ4MjUwNywianRpIjoiODFhZDJiZGEtNWQ3My00NWNjLWJkNmItYzNiMTM1MzQyMTE0IiwiaXNzIjoiaHR0cHM6Ly9zc28taW5ncmVzcy5zc28uYXBwcy5jbHVzdGVyLThsc3puLmR5bmFtaWMucmVkaGF0d29ya3Nob3BzLmlvL3JlYWxtcy8zc2NhbGUiLCJhdWQiOiJodHRwczovL3Nzby1pbmdyZXNzLnNzby5hcHBzLmNsdXN0ZXItOGxzem4uZHluYW1pYy5yZWRoYXR3b3Jrc2hvcHMuaW8vcmVhbG1zLzNzY2FsZSIsInN1YiI6ImEwODcyZGJiLTkzNzMtNDU0ZS04N2QyLTEzYTkyNmYwMmZkYyIsInR5cCI6IlJlZnJlc2giLCJhenAiOiIyOWVjOTczYyIsInNlc3Npb25fc3RhdGUiOiJiMmFkYWYzOC04YTVmLTRkYmYtYTNkYS1hMzAzNjY2NGZjZjYiLCJzY29wZSI6Im9wZW5pZCBwcm9maWxlIGVtYWlsIiwic2lkIjoiYjJhZGFmMzgtOGE1Zi00ZGJmLWEzZGEtYTMwMzY2NjRmY2Y2In0.kHlyoMR4qAxqSkmYBk0D_8iUV5cIRksq6Lf3KIn50Ds","token_type":"Bearer","id_token":"eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJlZ0E5WUhiSEN3YWx1NXZmcGVScDhuMFJzbHpCQTVJTTdSX1p1N0xDaWQ4In0.eyJleHAiOjE3MDQ0ODI4MDcsImlhdCI6MTcwNDQ4MjUwNywiYXV0aF90aW1lIjoxNzA0NDgyMDI5LCJqdGkiOiIyNDlhNTkyNi01MTg4LTQwNzYtYTBlZS0zNDQxMTM0NDc2MDYiLCJpc3MiOiJodHRwczovL3Nzby1pbmdyZXNzLnNzby5hcHBzLmNsdXN0ZXItOGxzem4uZHluYW1pYy5yZWRoYXR3b3Jrc2hvcHMuaW8vcmVhbG1zLzNzY2FsZSIsImF1ZCI6IjI5ZWM5NzNjIiwic3ViIjoiYTA4NzJkYmItOTM3My00NTRlLTg3ZDItMTNhOTI2ZjAyZmRjIiwidHlwIjoiSUQiLCJhenAiOiIyOWVjOTczYyIsInNlc3Npb25fc3RhdGUiOiJiMmFkYWYzOC04YTVmLTRkYmYtYTNkYS1hMzAzNjY2NGZjZjYiLCJhdF9oYXNoIjoiTUZSajkxQWZoNGxPbm9rRjEyM0R0dyIsImFjciI6IjAiLCJzaWQiOiJiMmFkYWYzOC04YTVmLTRkYmYtYTNkYS1hMzAzNjY2NGZjZjYiLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwibmFtZSI6IkdpdXNlcHBlIE1hZ25vdHRhIiwicHJlZmVycmVkX3VzZXJuYW1lIjoiZ2l1c2VwcGUiLCJnaXZlbl9uYW1lIjoiR2l1c2VwcGUiLCJmYW1pbHlfbmFtZSI6Ik1hZ25vdHRhIiwiZW1haWwiOiJnbWFnbm90dEByZWRoYXQuY29tIn0.OjH7QtMYov-H9Z2mfmUCcWVGy-AMY0wRVt4Wtcgm4JnuGUN3PGZFvbTtKsmVf7TBnvPKvtgeGwhSobY3W_YJAFVDVc6FlNaZWRQwisSwVQ0eXuoYWMVQwQtMptPrZIoSCBWHq9Yf37KCqlDKo1xRzTjRcz1TqGPzbW5naCevgSiDthASt3oYB1mYAeM_4Vm1MgekKyMU3YqBwKa5fiys4e56KZNUDJ4nZUOpylJZw7RUd5IjL7e4Fmg10v2n32e1y9v4Z5eFRmOq2pUg5Tesj6DVkQ63iGuViMvU1W6ozC5O-6vVHDcJ14mpyeRivuHjceczt6VMOV6JDH29tgWj4w","not-before-policy":0,"session_state":"b2adaf38-8a5f-4dbf-a3da-a3036664fcf6","scope":"openid profile email"}.
+
+Extract Access token.
+
+3. Do authenticad call to 3Scale API:
+
+curl --insecure -X GET https://api-3scale-apicast-staging.apps.cluster-8lszn.dynamic.redhatworkshops.io:443/api/user  -H "Authorization: Bearer $access_token"
+
+4. Refresh access token
+
+curl -X POST -u "myClientID:password" -d "grant_type=refresh_token&refresh_token=534310ab-570b-4eb4-0ed7-d01d243fae21" https://am.example.com:8443/am/oauth2/access_token
+
+
+## How To test authentication for Client Credentials
+
+1. Generate Token for application
+
+curl --insecure -X POST -u "clientid:secretid" -d "grant_type=client_credentials" https://sso-ingress.sso.apps.cluster-8lszn.dynamic.redhatworkshops.io/realms/3scale/protocol/openid-connect/token
+
+2. Use the generated token to perform a call
+
+curl -v -X GET http://quarkus-echo-hello-jboss.apps.cluster-8lszn.dynamic.redhatworkshops.io/api/hello -H "Authorization: Bearer $access_token"
