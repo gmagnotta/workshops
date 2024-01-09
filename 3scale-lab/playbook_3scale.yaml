@@ -152,6 +152,8 @@
                 replicas: 1
             wildcardDomain: "{{ wildcard_domain }}"
             resourceRequirementsEnabled: false
+            monitoring:
+              enabled: true
     
     - name: Wait for installation
       kubernetes.core.k8s_info:

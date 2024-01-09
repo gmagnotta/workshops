@@ -1,0 +1,128 @@
+---
+#
+# Playbook to create an installation of Apicurio Registry
+#
+# Apicurio requires a postgresql database
+#
+
+- name: Deploy apicurio in OpenShift cluster
+  hosts: localhost
+  vars:
+    project: "3scale"
+    sso_namespace: "sso"
+    sso_url: "http://keycloak-http-<namespace>.apps.<cluster host>"
+  tasks:
+
+    - name: Create Subscription
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: operators.coreos.com/v1alpha1
+          kind: Subscription
+          metadata:
+            name: service-registry-operator
+            namespace: "{{ project }}"
+          spec:
+            channel: 2.x
+            name: service-registry-operator
+            installPlanApproval: Automatic
+            source: redhat-operators
+            sourceNamespace: openshift-marketplace
+            startingCSV: service-registry-operator.v2.3.1
+
+    - name: Wait for Operator Installation
+      ansible.builtin.pause:
+        minutes: 5
+        prompt: "check that operator is installed"
+
+    # - name: Create SSO Realm for Apicurio
+    #   kubernetes.core.k8s:
+    #     state: present
+    #     definition:
+    #       apiVersion: keycloak.org/v1alpha1
+    #       kind: KeycloakRealm
+    #       metadata:
+    #         name: registry-keycloakrealm
+    #         namespace: "{{ sso_namespace }}"
+    #         labels:
+    #           app: registry
+    #       spec:
+    #         #instanceSelector:
+    #         #  matchLabels:
+    #         #    app: sso
+    #         realm:
+    #           displayName: Registry
+    #           enabled: true
+    #           id: registry
+    #           realm: registry
+    #           sslRequired: none
+    #           roles:
+    #             realm:
+    #               - name: sr-admin
+    #               - name: sr-developer
+    #               - name: sr-readonly
+    #           clients:
+    #             - clientId: registry-client-ui
+    #               implicitFlowEnabled: true
+    #               redirectUris:
+    #                 - '*'
+    #               standardFlowEnabled: true
+    #               webOrigins:
+    #                 - '*'
+    #               publicClient: true
+    #             - clientId: registry-client-api
+    #               implicitFlowEnabled: true
+    #               redirectUris:
+    #                 - '*'
+    #               standardFlowEnabled: true
+    #               webOrigins:
+    #                 - '*'
+    #               publicClient: true
+    #           users:
+    #             - credentials:
+    #                 - temporary: false
+    #                   type: password
+    #                   value: changeme
+    #               enabled: true
+    #               realmRoles:
+    #                 - sr-admin
+    #               username: registry-admin
+    #             - credentials:
+    #                 - temporary: false
+    #                   type: password
+    #                   value: changeme
+    #               enabled: true
+    #               realmRoles:
+    #                 - sr-developer
+    #               username: registry-developer
+    #             - credentials:
+    #                 - temporary: false
+    #                   type: password
+    #                   value: changeme
+    #               enabled: true
+    #               realmRoles:
+    #                 - sr-readonly
+    #               username: registry-user
+
+    - name: Create Apicurio
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: registry.apicur.io/v1
+          kind: ApicurioRegistry
+          metadata:
+            name: apicurioregistry
+            namespace: "{{ project }}"
+          spec:
+            configuration:
+              #security:
+              #  keycloak:
+              #    url: "{{ sso_url }}"
+              #    realm: "registry"
+              persistence: 'sql'
+              sql:
+                dataSource:
+                  url: 'jdbc:postgresql://postgresql:5432/apicurio'
+                  # e.g. url: 'jdbc:postgresql://acid-minimal-cluster.my-project.svc:5432/registry'
+                  userName: 'apicurio'
+                  password: 'apicurio' # Optional

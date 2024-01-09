@@ -3,16 +3,17 @@
 This lab is used to demonstrate on how 3scale works inside OCP.
 
 ## FIX SSL for S3 for Developer Portal
-After deployment, you need to manual fixes custom S3 certificate for
+After deployment, probaly you need to fix custom S3 certificates for the
 Developer portal. See https://access.redhat.com/solutions/6980338
 
 ## Configure Zync to use SSO
 
-Ansible playbook will import custom SSO cert inside zync. You must configure
-3scale to have a client inside SSO.
+Ansible playbook will import custom SSO cert inside zync.
+However, you need to configure a client inside SSO.
+
+Select "Authorization Code Flow (Standard Flow)" and "Service Accounts Flow (Client Credentials)"
 
 See https://access.redhat.com/documentation/en-us/red_hat_3scale_api_management/2.14/html/administering_the_api_gateway/integrating-threescale-with-an-openid-connect-identity-provider#configuring-rhsso-to-have-a-threescale-client_3scale-rhsso
-
 
 
 ## How To test authentication for Standard Flow
@@ -21,7 +22,7 @@ See https://access.redhat.com/documentation/en-us/red_hat_3scale_api_management/
 
 In the browser use the url:
 
-https://sso-ingress.localdomain/realms/3scale/protocol/openid-connect/auth?client_id=8fed5499&redirect_uri=http://localhost:8080/callback&response_type=code&scope=openid&state=fj8o3n7bdy1op5
+https://sso-ingress.localdomain/realms/3scale/protocol/openid-connect/auth?client_id=<clientid>&redirect_uri=http://localhost:8080/callback&response_type=code&scope=openid&state=fj8o3n7bdy1op5
 
 You will be asked to login. Pick an user that is in the realm.
 
@@ -55,7 +56,7 @@ curl --insecure -X GET https://api-3scale-apicast-staging.apps.cluster-8lszn.dyn
 
 4. Refresh access token
 
-curl -X POST -u "myClientID:password" -d "grant_type=refresh_token&refresh_token=534310ab-570b-4eb4-0ed7-d01d243fae21" https://am.example.com:8443/am/oauth2/access_token
+curl -X POST -u "myClientID:password" -d "grant_type=refresh_token&refresh_token=<accesstoken>" https://sso-ingress.sso.apps.cluster-8lszn.dynamic.redhatworkshops.io/realms/3scale/protocol/openid-connect/token
 
 
 ## How To test authentication for Client Credentials
@@ -64,6 +65,6 @@ curl -X POST -u "myClientID:password" -d "grant_type=refresh_token&refresh_token
 
 curl --insecure -X POST -u "clientid:secretid" -d "grant_type=client_credentials" https://sso-ingress.sso.apps.cluster-8lszn.dynamic.redhatworkshops.io/realms/3scale/protocol/openid-connect/token
 
-2. Use the generated token to perform a call
+2. Use the generated access token to perform a call
 
 curl -v -X GET http://quarkus-echo-hello-jboss.apps.cluster-8lszn.dynamic.redhatworkshops.io/api/hello -H "Authorization: Bearer $access_token"
