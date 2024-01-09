@@ -2,7 +2,8 @@
 #
 # Playbook to create an installation of an AMQ Broker
 #
-
+# It will provision an user with username "user" and password "password"
+#
 - name: Deploy 3scale in OpenShift cluster
   hosts: localhost
   vars:
@@ -31,6 +32,22 @@
         minutes: 5
         prompt: "check that operator is installed"
 
+    - name: Create Secret for ActiveMQArtemis
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          kind: Secret
+          apiVersion: v1
+          metadata:
+            name: custom-jaas-config
+            namespace: "{{ project }}"
+          data:
+            login.config: >-
+              YWN0aXZlbXEgewogICBvcmcuYXBhY2hlLmFjdGl2ZW1xLmFydGVtaXMuc3BpLmNvcmUuc2VjdXJpdHkuamFhcy5Qcm9wZXJ0aWVzTG9naW5Nb2R1bGUgc3VmZmljaWVudAogICAgICByZWxvYWQ9dHJ1ZQogICAgICBvcmcuYXBhY2hlLmFjdGl2ZW1xLmphYXMucHJvcGVydGllcy51c2VyPSJuZXctdXNlcnMucHJvcGVydGllcyIKICAgICAgb3JnLmFwYWNoZS5hY3RpdmVtcS5qYWFzLnByb3BlcnRpZXMucm9sZT0ibmV3LXJvbGVzLnByb3BlcnRpZXMiOwoKICAgb3JnLmFwYWNoZS5hY3RpdmVtcS5hcnRlbWlzLnNwaS5jb3JlLnNlY3VyaXR5LmphYXMuUHJvcGVydGllc0xvZ2luTW9kdWxlIHN1ZmZpY2llbnQKICAgICAgcmVsb2FkPWZhbHNlCiAgICAgIG9yZy5hcGFjaGUuYWN0aXZlbXEuamFhcy5wcm9wZXJ0aWVzLnVzZXI9ImFydGVtaXMtdXNlcnMucHJvcGVydGllcyIKICAgICAgb3JnLmFwYWNoZS5hY3RpdmVtcS5qYWFzLnByb3BlcnRpZXMucm9sZT0iYXJ0ZW1pcy1yb2xlcy5wcm9wZXJ0aWVzIgogICAgICBiYXNlRGlyPSIvaG9tZS9qYm9zcy9hbXEtYnJva2VyL2V0YyI7Cn07Cg==
+            new-roles.properties: dXNlcj11c2Vy
+            new-users.properties: dXNlcj1wYXNzd29yZAo=
+          type: Opaque
+
     - name: Create ActiveMQArtemis
       kubernetes.core.k8s:
         state: present
@@ -38,7 +55,7 @@
           apiVersion: broker.amq.io/v1beta1
           kind: ActiveMQArtemis
           metadata:
-            name: ex-aao
+            name: amqbroker
             namespace: "{{ project }}"
           spec:
             deploymentPlan:
@@ -48,14 +65,18 @@
               persistenceEnabled: true
               journalType: nio
               messageMigration: true
+              extraMounts:
+                secrets:
+                - "custom-jaas-config"
             console:
               expose: true
-            env:
-            - name: AMQ_USER
-              value: 'user'
-            - name: AMQ_PASSWORD
-              value: 'password'
-            - name: AMQ_ROLE
-              value: 'admin'
-            - name: MQ_SERIALIZABLE_PACKAGES
-              value: ''
+            brokerProperties:
+            - securityRoles.#.user.createAddress=true
+            - securityRoles.#.user.deleteAddress=true
+            - securityRoles.#.user.createDurableQueue=true
+            - securityRoles.#.user.deleteDurableQueue=true
+            - securityRoles.#.user.createNonDurableQueue=true
+            - securityRoles.#.user.deleteNonDurableQueue=true
+            - securityRoles.#.user.send=true
+            - securityRoles.#.user.consume=true
+            - securityRoles.#.user.browse=true
