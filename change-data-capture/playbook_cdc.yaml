@@ -1,0 +1,223 @@
+---
+#
+# Playbook to create an installation of kafkaConnect plus Debezium
+#
+# see https://github.com/strimzi/strimzi-kafka-operator/blob/main/examples/security/tls-auth/connect.yaml
+# see https://access.redhat.com/documentation/en-us/red_hat_build_of_debezium/2.3.4/html-single/debezium_user_guide/index#descriptions-of-debezium-postgresql-connector-configuration-properties
+#
+- name: Deploy kafkaConnect plus Debezium in OpenShift cluster
+  hosts: localhost
+  vars:
+    project: "kafka"
+  tasks:
+
+    # Generates an user for Debezium
+    - name: Create Kafka User
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: kafka.strimzi.io/v1beta2
+          kind: KafkaUser
+          metadata:
+            name: debezium
+            namespace: "{{ project }}"
+            labels:
+              strimzi.io/cluster: my-cluster
+          spec:
+            authentication:
+              type: tls
+            authorization:
+              type: simple
+              acls:
+                - resource:
+                    type: topic
+                    name: debezium-cluster-offsets
+                    patternType: literal
+                  operations:
+                    - Describe
+                    - Read
+                    - Write
+                    - Create
+                  host: "*"
+                - resource:
+                    type: topic
+                    name: debezium-cluster-configs
+                    patternType: literal
+                  operations:
+                    - Describe
+                    - Read
+                    - Write
+                    - Create
+                  host: "*"
+                - resource:
+                    type: topic
+                    name: debezium-cluster-status
+                    patternType: literal
+                  operations:
+                    - Describe
+                    - Read
+                    - Write
+                    - Create
+                  host: "*"
+                - resource:
+                    type: topic
+                    name: jboss.public.line_items
+                    patternType: literal
+                  operations:
+                    - Describe
+                    - Read
+                    - Write
+                    - Create
+                  host: "*"
+                - resource:
+                    type: topic
+                    name: jboss.public.items
+                    patternType: literal
+                  operations:
+                    - Describe
+                    - Read
+                    - Write
+                    - Create
+                  host: "*"
+                - resource:
+                    type: topic
+                    name: jboss.public.orders
+                    patternType: literal
+                  operations:
+                    - Describe
+                    - Read
+                    - Write
+                    - Create
+                  host: "*"
+                - resource:
+                    type: group
+                    name: debezium
+                    patternType: literal
+                  operations:
+                    - Read
+                  host: "*"
+
+    - name: Create Image Stream
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: image.openshift.io/v1
+          kind: ImageStream
+          metadata:
+            name: my-connect-cluster
+            namespace: "{{ project }}"
+          spec:
+            lookupPolicy:
+              local: true
+
+    # Creates a Kafka Connect Cluster
+    - name: Create Kafka Connect
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: kafka.strimzi.io/v1beta2
+          kind: KafkaConnect 
+          metadata:
+            name: my-connect-cluster
+            namespace: "{{ project }}"
+            annotations:
+              strimzi.io/use-connector-resources: "true" 
+          spec:
+            version: 3.5.0
+            replicas: 1
+            bootstrapServers: my-cluster-kafka-bootstrap:9093
+            tls:
+              trustedCertificates:
+                - secretName: my-cluster-cluster-ca-cert
+                  certificate: ca.crt
+            authentication:
+              type: tls
+              certificateAndKey:
+                secretName: debezium
+                certificate: user.crt
+                key: user.key
+            config:
+              group.id: debezium
+              offset.storage.topic: debezium-cluster-offsets
+              config.storage.topic: debezium-cluster-configs
+              status.storage.topic: debezium-cluster-status
+              topic.creation.enable: true
+            build: 
+              output: 
+                type: imagestream
+                image: my-connect-cluster:latest
+              plugins: 
+                - name: debezium-postgres-connector
+                  artifacts:
+                    - type: zip
+                      url: https://maven.repository.redhat.com/ga/io/debezium/debezium-connector-postgres/2.3.4.Final-redhat-00001/debezium-connector-postgres-2.3.4.Final-redhat-00001-plugin.zip
+
+    # Inject this configuration in the Kafka Connect to start reading from db
+    - name: Create Kafka Connector
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: kafka.strimzi.io/v1beta2
+          kind: KafkaConnector
+          metadata:
+            labels:
+              strimzi.io/cluster: my-connect-cluster
+            name: inventory-connector-postgresql
+            namespace: "{{ project }}"
+          spec:
+            class: io.debezium.connector.postgresql.PostgresConnector
+            tasksMax: 1  
+            config:
+              topic.prefix: jboss
+              database.hostname: postgresql.jboss.svc.cluster.local
+              database.port: 5432
+              database.user: jboss
+              database.password: jboss
+              database.dbname: jboss
+              database.server.name: dbserver1
+              schema.include.list: public
+              table.include.list: public.orders, public.line_items, public.items
+              tombstones.on.delete: false
+              plugin.name: pgoutput
+              transforms: unwrap
+              transforms.unwrap.type: io.debezium.transforms.ExtractNewRecordState
+              transforms.unwrap.drop.tombstones: false
+              transforms.unwrap.add.headers: op
+              key.converter: org.apache.kafka.connect.json.JsonConverter
+              key.converter.schemas.enable: false
+              value.converter: org.apache.kafka.connect.json.JsonConverter
+              value.converter.schemas.enable: false
+
+    # Creates an user to read topics on Kafka
+    - name: Create Kafka User
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: kafka.strimzi.io/v1beta2
+          kind: KafkaUser
+          metadata:
+            name: consumer
+            namespace: "{{ project }}"
+            labels:
+              strimzi.io/cluster: my-cluster
+          spec:
+            authentication:
+              type: tls
+            authorization:
+              type: simple
+              acls:
+                - resource:
+                    type: topic
+                    name: jboss
+                    patternType: prefix
+                  operations:
+                    - Describe
+                    - Read
+                  host: "*"
+                - resource:
+                    type: group
+                    name: consumer
+                    patternType: literal
+                  operations:
+                    - Read
+                  host: "*"

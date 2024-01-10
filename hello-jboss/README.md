@@ -6,17 +6,18 @@ application in containers adopting DevOps practices.
 ---
 How to try:
 
+First, be sure that OpenShift Pipelines is installed in the cluster.
+
+If not already available, deploy SSO and then create a realm for this JavaEE application.
+
 Create a new project and import needed secrets to access registry.redhat.io
+
+If not already available, deploy a PostgreSQL database and then create an user and a database dedicated to this JavaEE application
+If not already available, deploy an AMQ Broker and then create an user dedicated to this JavaEE application
 
 Import Custom Tekton S2I Task https://raw.githubusercontent.com/gmagnotta/buildah_s2i/main/buildah_s2i_task.yaml in newly created project.
 Import Custom SBOM generate Task https://raw.githubusercontent.com/gmagnotta/container-utils/main/tekton/generate_sbom_task.yaml in newly created project.
 Import Custom vulnerability scan Task https://raw.githubusercontent.com/gmagnotta/container-utils/main/tekton/vulnerability_sbom_task.yaml in newly created project.
-
-If not already available, deploy a PostgreSQL database and then create an user and a database dedicated to this JavaEE application
-
-If not already available, deploy an AMQ Broker and then create an user dedicated to this JavaEE application
-
-If not already available, deploy SSO and then create a realm for this JavaEE application.
 
 Customize the variables in playbook_hello-jboss_pipeline.yaml to reflect the environment (username, passwords, urls, etc) 
 
