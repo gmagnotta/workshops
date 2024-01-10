@@ -215,8 +215,89 @@
                     - Read
                   host: "*"
                 - resource:
+                    type: topic
+                    name: outbox.event.OrderCreated
+                    patternType: prefix
+                  operations:
+                    - Describe
+                    - Read
+                  host: "*"
+                - resource:
                     type: group
                     name: consumer
+                    patternType: literal
+                  operations:
+                    - Read
+                  host: "*"
+
+    - name: Create Kafka User
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: kafka.strimzi.io/v1beta2
+          kind: KafkaUser
+          metadata:
+            name: streams
+            namespace: "{{ project }}"
+            labels:
+              strimzi.io/cluster: my-cluster
+          spec:
+            authentication:
+              type: tls
+            authorization:
+              type: simple
+              acls:
+                - resource:
+                    type: topic
+                    name: jboss
+                    patternType: prefix
+                  operations:
+                    - Describe
+                    - Read
+                  host: "*"
+                - resource:
+                    type: topic
+                    name: streams
+                    patternType: prefix
+                  operations:
+                    - Describe
+                    - Read
+                    - Write
+                    - Create
+                  host: "*"
+                - resource:
+                    type: topic
+                    name: outbox.event.OrderCreated
+                    patternType: prefix
+                  operations:
+                    - Describe
+                    - Read
+                    - Write
+                    - Create
+                  host: "*"
+                - resource:
+                    type: topic
+                    name: topItems
+                    patternType: prefix
+                  operations:
+                    - Describe
+                    - Read
+                    - Write
+                    - Create
+                  host: "*"
+                - resource:
+                    type: topic
+                    name: topOrders
+                    patternType: prefix
+                  operations:
+                    - Describe
+                    - Read
+                    - Write
+                    - Create
+                  host: "*"
+                - resource:
+                    type: group
+                    name: streams
                     patternType: literal
                   operations:
                     - Read

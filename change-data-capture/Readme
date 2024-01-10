@@ -1,0 +1,34 @@
+# Change Data Capture lab
+
+This lab is used to demonstrate on how to use Change Data Capture with debezium
+
+## Description
+
+Provision the ansible playbook playbook_cdc.yaml.
+
+It will create a Kafka User for debezium, a Kafka Connect cluster,
+a Connector to start debezium on postgresql an user for Kafka Streams client
+(quarkus-order-streams) and an user for reading aggregated data (quarkus-order-logger).
+
+## Prerequirements
+
+Before starting Debezium, the postgresql should be configured to create
+publication for all tables. 
+
+## Setup
+
+After the playbook is played, debezium will connect to the postgresql database
+and will start populate jboss.public.orders, jboss.public.line_items and 
+jboss.public.items topics on Kafka with content coming from the database.
+
+At this point you can deploy the application quarkus-order-streams.
+The application will perform stream processing to aggregate data and emit
+ordercreated events into the outbox.event.OrderCreated
+
+It will calculate also biggest orders (topOrders topic) and most sold items
+(topItems topic).
+
+At this point you can deploy the application quarkus-order-logger.
+The application will read events from outbox.event.OrderCreated and will show
+on screen the content.
+If configured correctly, the application can also send messages via telegram.
