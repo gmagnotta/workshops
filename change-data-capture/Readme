@@ -2,6 +2,11 @@
 
 This lab is used to demonstrate on how to use Change Data Capture with debezium
 
+## Prerequirements
+
+Before starting Debezium, the postgresql should be configured to create
+publication for all tables.
+
 ## Description
 
 Provision the ansible playbook playbook_cdc.yaml.
@@ -9,11 +14,6 @@ Provision the ansible playbook playbook_cdc.yaml.
 It will create a Kafka User for debezium, a Kafka Connect cluster,
 a Connector to start debezium on postgresql an user for Kafka Streams client
 (quarkus-order-streams) and an user for reading aggregated data (quarkus-order-logger).
-
-## Prerequirements
-
-Before starting Debezium, the postgresql should be configured to create
-publication for all tables. 
 
 ## Setup
 

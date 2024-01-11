@@ -12,7 +12,7 @@
   tasks:
 
     # Generates an user for Debezium
-    - name: Create Kafka User
+    - name: Create Kafka User for Debezium
       kubernetes.core.k8s:
         state: present
         definition:
@@ -111,7 +111,7 @@
               local: true
 
     # Creates a Kafka Connect Cluster
-    - name: Create Kafka Connect
+    - name: Create Kafka Connect Cluster
       kubernetes.core.k8s:
         state: present
         definition:
@@ -153,7 +153,7 @@
                       url: https://maven.repository.redhat.com/ga/io/debezium/debezium-connector-postgres/2.3.4.Final-redhat-00001/debezium-connector-postgres-2.3.4.Final-redhat-00001-plugin.zip
 
     # Inject this configuration in the Kafka Connect to start reading from db
-    - name: Create Kafka Connector
+    - name: Create Kafka Connector with Debezium
       kubernetes.core.k8s:
         state: present
         definition:
@@ -188,49 +188,7 @@
               value.converter: org.apache.kafka.connect.json.JsonConverter
               value.converter.schemas.enable: false
 
-    # Creates an user to read topics on Kafka
-    - name: Create Kafka User
-      kubernetes.core.k8s:
-        state: present
-        definition:
-          apiVersion: kafka.strimzi.io/v1beta2
-          kind: KafkaUser
-          metadata:
-            name: consumer
-            namespace: "{{ project }}"
-            labels:
-              strimzi.io/cluster: my-cluster
-          spec:
-            authentication:
-              type: tls
-            authorization:
-              type: simple
-              acls:
-                - resource:
-                    type: topic
-                    name: jboss
-                    patternType: prefix
-                  operations:
-                    - Describe
-                    - Read
-                  host: "*"
-                - resource:
-                    type: topic
-                    name: outbox.event.OrderCreated
-                    patternType: prefix
-                  operations:
-                    - Describe
-                    - Read
-                  host: "*"
-                - resource:
-                    type: group
-                    name: consumer
-                    patternType: literal
-                  operations:
-                    - Read
-                  host: "*"
-
-    - name: Create Kafka User
+    - name: Create Kafka User for Stream Processing
       kubernetes.core.k8s:
         state: present
         definition:
@@ -302,3 +260,45 @@
                   operations:
                     - Read
                   host: "*"
+
+    - name: Create Kafka User to read aggregated data
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: kafka.strimzi.io/v1beta2
+          kind: KafkaUser
+          metadata:
+            name: consumer
+            namespace: "{{ project }}"
+            labels:
+              strimzi.io/cluster: my-cluster
+          spec:
+            authentication:
+              type: tls
+            authorization:
+              type: simple
+              acls:
+                - resource:
+                    type: topic
+                    name: jboss
+                    patternType: prefix
+                  operations:
+                    - Describe
+                    - Read
+                  host: "*"
+                - resource:
+                    type: topic
+                    name: outbox.event.OrderCreated
+                    patternType: prefix
+                  operations:
+                    - Describe
+                    - Read
+                  host: "*"
+                - resource:
+                    type: group
+                    name: consumer
+                    patternType: literal
+                  operations:
+                    - Read
+                  host: "*"
+
