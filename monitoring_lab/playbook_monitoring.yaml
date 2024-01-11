@@ -1,0 +1,58 @@
+---
+#
+# Playbook to create an user monitoring stack
+#
+- name: Deploy user monitoring stack in OpenShift cluster
+  hosts: localhost
+  vars:
+    project: "openshift-user-workload-monitoring"
+  tasks:
+
+    - name: Create ConfigMap
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: cluster-monitoring-config
+            namespace: openshift-monitoring
+          data:
+            config.yaml: |
+              enableUserWorkload: true
+              alertmanagerMain:
+                enableUserAlertmanagerConfig: true
+
+    # - name: Create ConfigMap
+    #   kubernetes.core.k8s:
+    #     state: present
+    #     definition:
+    #       apiVersion: v1
+    #       kind: ConfigMap
+    #       metadata:
+    #         name: user-workload-monitoring-config
+    #         namespace: openshift-user-workload-monitoring
+    #       data:
+    #         config.yaml: |
+
+    - name: Create ConfigMap
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: monitoring.coreos.com/v1
+          kind: ServiceMonitor
+          metadata:
+            name: jboss-service-monitor
+            namespace: jboss
+          spec:
+            endpoints:
+              - interval: 15s
+                path: /metrics
+                port: 9799-tcp
+                scheme: http
+            namespaceSelector:
+              matchNames:
+                - jboss
+            selector:
+              matchLabels:
+                app: hello-jboss
