@@ -8,6 +8,7 @@
   hosts: localhost
   vars:
     project: "kafka"
+    cluster_name: "my-cluster"
   tasks:
 
     - name: Create Subscription
@@ -39,7 +40,7 @@
           apiVersion: kafka.strimzi.io/v1beta2
           kind: Kafka
           metadata:
-            name: my-cluster
+            name: "{{ cluster_name }}"
             namespace: "{{ project }}"
           spec:
             kafka:
@@ -93,3 +94,9 @@
     #           strimzi.io/cluster: my-cluster
     #       spec:
     #         topicName: topic-name-1
+
+    - name: Extract the cluster CA certificate
+      shell: oc get secret "{{ cluster_name }}"-cluster-ca-cert -n "{{ project }}" -o jsonpath='{.data.ca\.p12}' | base64 -d > /tmp/ca.p12
+
+    - name: Extract the cluster CA password
+      shell: oc get secret "{{ cluster_name }}"-cluster-ca-cert -n "{{ project }}" -o jsonpath='{.data.ca\.password}' | base64 -d > /tmp/ca.password

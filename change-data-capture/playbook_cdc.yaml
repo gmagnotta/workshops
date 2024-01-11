@@ -302,3 +302,22 @@
                     - Read
                   host: "*"
 
+    - name: Extract the user debezium certificate
+      shell: oc get secret debezium -n "{{ project }}" -o jsonpath='{.data.user\.p12}' | base64 -d > /tmp/debezium.p12
+
+    - name: Extract the user debezium password
+      shell: oc get secret debezium -n "{{ project }}" -o jsonpath='{.data.user\.password}' | base64 -d > /tmp/debezium.password
+
+
+    - name: Extract the user streams certificate
+      shell: oc get secret streams -n "{{ project }}" -o jsonpath='{.data.user\.p12}' | base64 -d > /tmp/streams.p12
+
+    - name: Extract the user streams password
+      shell: oc get secret streams -n "{{ project }}" -o jsonpath='{.data.user\.password}' | base64 -d > /tmp/streams.password
+
+
+    - name: Extract the user consumer certificate
+      shell: oc get secret consumer -n "{{ project }}" -o jsonpath='{.data.user\.p12}' | base64 -d > /tmp/consumer.p12
+
+    - name: Extract the user consumer password
+      shell: oc get secret consumer -n "{{ project }}" -o jsonpath='{.data.user\.password}' | base64 -d > /tmp/consumer.password
