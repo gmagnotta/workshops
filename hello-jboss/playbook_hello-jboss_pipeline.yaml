@@ -23,7 +23,7 @@
     database_password: "jboss"
     database_name: "jboss"
     sso_secret: "password"
-    sso_url: "https://sso.localdomain/"
+    sso_url: "https://sso.localdomain/realms/jboss"
     sso_client: "hello-jboss"
     sso_username: ""
     sso_password: ""
