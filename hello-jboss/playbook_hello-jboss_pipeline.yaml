@@ -22,10 +22,8 @@
     database_username: "jboss"
     database_password: "jboss"
     database_name: "jboss"
-    sso_public_key: ""
     sso_secret: "password"
     sso_url: "https://sso.localdomain/"
-    sso_realm: "hello-jboss"
     sso_client: "hello-jboss"
     sso_username: ""
     sso_password: ""
@@ -101,7 +99,6 @@
             database-username: "{{ database_username | b64encode }}"
             database-password: "{{ database_password | b64encode }}"
             database-name: "{{ database_name | b64encode }}"
-            sso-public-key: "{{ sso_public_key | b64encode }}"
             sso-secret: "{{ sso_secret | b64encode }}"
             sso-username: "{{ sso_username | b64encode }}"
             sso-password: "{{ sso_password | b64encode }}"
@@ -123,20 +120,12 @@
           data:
             enable-generate-default-datasource: 'false'
             sso-url: "{{ sso_url }}"
-            sso-realm: "{{ sso_realm }}"
             sso-client: "{{ sso_client }}"
             sso-disable-ssl-certificate-validation: 'false'
             hostname-http: "{{ hostname_http }}"
             hostname-https: "{{ hostname_https }}"
             ocp-postgresql-service-host: "{{ ocp_postgresql_service_host }}"
             ocp-postgresql-service-port: "{{ ocp_postgresql_service_port }}"
-            ds1-connection-checker: 'org.jboss.jca.adapters.jdbc.extensions.postgres.PostgreSQLValidConnectionChecker'
-            ds1-driver: 'postgresql'
-            ds1-exception-sorter: 'org.jboss.jca.adapters.jdbc.extensions.postgres.PostgreSQLExceptionSorter'
-            ds1-max-pool-size: '20'
-            ds1-min-pool-size: '20'
-            ds1-nonxa: 'true'
-            ab-prometheus-enable: 'true'
             auto-deploy-exploded: 'false'
             mq-queues: "{{ mq_queues }}"
             mq-topics: ''
