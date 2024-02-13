@@ -2,6 +2,13 @@
 #
 # Playbook to create a Tekton Pipeline for jboss-eap project
 #
+
+- import_playbook: ../../container-utils/playbooks/playbook_initialize_project.yaml
+
+- import_playbook: ../../container-utils/playbooks/playbook_provision_postgresql.yaml
+
+- import_playbook: ../amq-broker-lab/playbook_amqbroker.yaml
+
 - name: Deploy JBoss EAP in OpenShift cluster
   hosts: localhost
   vars:
@@ -31,6 +38,18 @@
     mq_password: "password"
 
   tasks:
+
+    - name: Import buildah_s2i_task
+      shell: "oc apply -n {{ project }} -f https://raw.githubusercontent.com/gmagnotta/buildah_s2i/main/buildah_s2i_task.yaml"
+
+    - name: Import buildah_s2i_runtime_task
+      shell: "oc apply -n {{ project }} -f https://raw.githubusercontent.com/gmagnotta/buildah_s2i/main/buildah_s2i_runtime_task.yaml"
+
+    - name: Import generate_sbom_task
+      shell: "oc apply -n {{ project }} -f https://raw.githubusercontent.com/gmagnotta/container-utils/main/tekton/generate_sbom_task.yaml"
+
+    - name: Import vulnerability_sbom_task
+      shell: "oc apply -n {{ project }} -f https://raw.githubusercontent.com/gmagnotta/container-utils/main/tekton/vulnerability_sbom_task.yaml"
 
     - name: Check if secret is linked
       shell: "oc get serviceaccount pipeline -n {{ project }} -o json | jq -r '.secrets[] | select(.name | test(\"redhatregistryio\")).name'"
@@ -133,17 +152,39 @@
           apiVersion: image.openshift.io/v1
           kind: ImageStream
           metadata:
-            name: eap74-openjdk11-openshift-rhel8
+            name: eap8-openjdk17-builder-openshift-rhel8
             namespace: "{{ project }}"
           spec:
             lookupPolicy:
               local: true
             tags:
             - annotations:
-                description: Red Hat JBoss EAP 7 Image
+                description: Red Hat JBoss EAP 8 Image
               from:
                 kind: DockerImage
-                name: registry.redhat.io/jboss-eap-7/eap74-openjdk11-openshift-rhel8:7.4.5
+                name: registry.redhat.io/jboss-eap-8/eap8-openjdk17-builder-openshift-rhel8:1.0.0.GA
+              name: latest
+              referencePolicy:
+                type: Local
+
+    - name: Create Image Stream
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: image.openshift.io/v1
+          kind: ImageStream
+          metadata:
+            name: eap8-openjdk17-runtime-openshift-rhel8
+            namespace: "{{ project }}"
+          spec:
+            lookupPolicy:
+              local: true
+            tags:
+            - annotations:
+                description: Red Hat JBoss EAP 8 Runtime Image
+              from:
+                kind: DockerImage
+                name: registry.redhat.io/jboss-eap-8/eap8-openjdk17-runtime-openshift-rhel8:1.0.0.GA
               name: latest
               referencePolicy:
                 type: Local
@@ -169,7 +210,20 @@
               name: latest
               referencePolicy:
                 type: Local
-    
+
+    - name: Create ImageStream
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: image.openshift.io/v1
+          kind: ImageStream
+          metadata:
+            name: hello-jboss-artifacts
+            namespace: "{{ project }}"
+          spec:
+            lookupPolicy:
+              local: true
+
     - name: Create ImageStream
       kubernetes.core.k8s:
         state: present
@@ -250,7 +304,9 @@
                     value: '{{ gitrepo }}'
                   - name: deleteExisting
                     value: "true"
-              - name: build-jboss
+                  - name: revision
+                    value: jakartaee10
+              - name: build-jboss-artifacts
                 taskRef:
                   name: buildah-s2i
                 runAfter:
@@ -266,11 +322,11 @@
                     workspace: artifacts
                 params:
                   - name: BUILDER_IMAGE
-                    value: "image-registry.openshift-image-registry.svc:5000/{{ project }}/eap74-openjdk11-openshift-rhel8:latest"
+                    value: "image-registry.openshift-image-registry.svc:5000/{{ project }}/eap8-openjdk17-builder-openshift-rhel8"
                   - name: TLSVERIFY
                     value: "false"
                   - name: OUTPUT_IMAGE
-                    value: "image-registry.openshift-image-registry.svc:5000/{{ project }}/hello-jboss"
+                    value: "image-registry.openshift-image-registry.svc:5000/{{ project }}/hello-jboss-artifacts"
                   - name: PATH_CONTEXT
                     value: "{{ repocontext }}"
               - name: build-migration
@@ -296,6 +352,27 @@
                     value: "image-registry.openshift-image-registry.svc:5000/{{ project }}/hello-jboss-migration"
                   - name: PATH_CONTEXT
                     value: "{{ repocontext }}/src/main/resources/db"
+              - name: build-jboss
+                taskRef:
+                  name: buildah-s2i-runtime
+                runAfter:
+                  - build-jboss-artifacts
+                workspaces:
+                  - name: source
+                    workspace: src
+                params:
+                  - name: RUNTIME_IMAGE
+                    value: "image-registry.openshift-image-registry.svc:5000/{{ project }}/eap8-openjdk17-runtime-openshift-rhel8"
+                  - name: TLSVERIFY
+                    value: "false"
+                  - name: SOURCE_IMAGE
+                    value: "$(tasks.build-jboss-artifacts.results.IMAGE_URL)@$(tasks.build-jboss-artifacts.results.IMAGE_DIGEST)"
+                  - name: OUTPUT_IMAGE
+                    value: "image-registry.openshift-image-registry.svc:5000/{{ project }}/hello-jboss"
+                  - name: SRC_ARTIFACT
+                    value: "/opt/server"
+                  - name: DESTINATION_URL
+                    value: "/opt/server"
               - name: generate-sbom
                 taskRef:
                   name: generate-sbom
