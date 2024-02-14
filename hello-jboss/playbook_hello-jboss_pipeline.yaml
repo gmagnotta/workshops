@@ -299,7 +299,7 @@
                   - name: deleteExisting
                     value: "true"
                   - name: revision
-                    value: jakartaee10
+                    value: master
               - name: build-jboss-artifacts
                 taskRef:
                   name: buildah-s2i
