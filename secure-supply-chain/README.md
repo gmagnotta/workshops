@@ -3,11 +3,11 @@
 ## This repository is intended as a placeholder for collecting useful resources to demonstrate on how to build a secure supply chain.
 
 ## How to start
-After installing Tekton Chains, it will monitors TaskRun containing result [] [].
+After installing Tekton Chains, it will monitors TaskRun providing results [IMAGE_URL] and [IMAGE_DIGEST].
 
-When the variables are found, it will use cosign to generate automatically the signature of the image.
+When the results are found, it will use cosign to automatically generate the signature of the image and the attestation.
 
-The registry will provide new tags [.att] the attestation and [.sig] the signature.
+The registry will provide 2 new tags: [.att] the attestation and [.sig] the signature.
 
 ## Download
 
@@ -23,16 +23,16 @@ To manually upload images, signature and attestation from local filesystem to an
 `skopeo copy --preserve-digests oci-archive:/tmp/myimage-myhash.sig docker://image-registry.localdomain/project/image:sha256-myhash.sig`
 `skopeo copy --preserve-digests oci-archive:/tmp/myimage-myhash.att docker://image-registry.localdomain/project/image:sha256-myhash.att`
 
-## Verify Signature and Provenance
+## Verify Signature and Attestation
 
-To verify the signature and image provenance, you need to download the public key used by cosign to sign and save it locally as cosign.pub.
+To verify the signature and image attestation, you need to download the public key used by cosign to sign and save it locally as cosign.pub.
 
 `cosign verify --key cosign.pub docker://image-registry.localdomain/project/image:mytag`
 `cosign verify-attestation --key cosign.pub --type slsaprovenance docker://image-registry.localdomain/project/image:mytag`
 
-## Verify provenance on the public rekor service
+## Verify Attestation on the public rekor service
 
-To verify the provenance on the public rekor service, visit https://search.sigstore.dev/ select 'Hash', and insert the the sha256 hash of the image 
+To verify the attestation on the public rekor service, visit https://search.sigstore.dev/ select 'Hash', and insert the the sha256 hash of the image 
 
 ## Reference
 
