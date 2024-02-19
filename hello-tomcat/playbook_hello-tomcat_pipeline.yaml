@@ -2,6 +2,10 @@
 #
 # Playbook to create a Tekton Pipeline for hello-tomcat project
 #
+
+# Create Project
+- import_playbook: ../../container-utils/playbooks/playbook_initialize_project.yaml
+
 - name: Deploy Tomcat in OpenShift cluster
   hosts: localhost
   vars:
@@ -10,6 +14,15 @@
     gitrepo: "https://github.com/gmagnotta/examples"
     repocontext: "hello-tomcat"
   tasks:
+
+    - name: Import buildah_s2i_task
+      shell: "oc apply -n {{ project }} -f https://raw.githubusercontent.com/gmagnotta/buildah_s2i/main/buildah_s2i_task.yaml"
+
+    - name: Import generate_sbom_task
+      shell: "oc apply -n {{ project }} -f https://raw.githubusercontent.com/gmagnotta/container-utils/main/tekton/generate_sbom_task.yaml"
+
+    - name: Import vulnerability_sbom_task
+      shell: "oc apply -n {{ project }} -f https://raw.githubusercontent.com/gmagnotta/container-utils/main/tekton/vulnerability_sbom_task.yaml"
 
     - name: Check if secret is linked
       shell: "oc get serviceaccount pipeline -n {{ project }} -o json | jq -r '.secrets[] | select(.name | test(\"redhatregistryio\")).name'"
@@ -30,17 +43,17 @@
           apiVersion: image.openshift.io/v1
           kind: ImageStream
           metadata:
-            name: jws57-openjdk11-openshift-rhel8
+            name: jws60-openjdk17-openshift-rhel8
             namespace: "{{ project }}"
           spec:
             lookupPolicy:
               local: true
             tags:
             - annotations:
-                description: Red Hat JBoss WS 5.7 Image
+                description: Red Hat JBoss WS 6.0 Image
               from:
                 kind: DockerImage
-                name: registry.redhat.io/jboss-webserver-5/jws57-openjdk11-openshift-rhel8
+                name: registry.redhat.io/jboss-webserver-6/jws60-openjdk17-openshift-rhel8
               name: latest
               referencePolicy:
                 type: Local
@@ -69,7 +82,7 @@
             namespace: "{{ project }}"
           data:
             env: |
-              MAVEN_CLEAR_REPO=true
+              #MAVEN_CLEAR_REPO=true
               #MAVEN_S2I_GOALS=clean package sonar:sonar
               #MAVEN_ARGS_APPEND=-Dsonar.projectKey=hello-tomcat -Dsonar.projectName='hello-tomcat' -Dsonar.host.url=http://sonarqube  -Dsonar.token=sqp_ae716219200c705ff2ff1698f2e2c860573d12aa
               #
@@ -135,19 +148,43 @@
                     workspace: artifacts
                 params:
                   - name: BUILDER_IMAGE
-                    value: "image-registry.openshift-image-registry.svc:5000/{{ project }}/jws57-openjdk11-openshift-rhel8"
+                    value: "image-registry.openshift-image-registry.svc:5000/{{ project }}/jws60-openjdk17-openshift-rhel8"
                   - name: TLSVERIFY
                     value: "false"
                   - name: OUTPUT_IMAGE
                     value: "image-registry.openshift-image-registry.svc:5000/{{ project }}/hello-tomcat"
                   - name: PATH_CONTEXT
                     value: "{{ repocontext }}"
+              - name: generate-sbom
+                taskRef:
+                  name: generate-sbom
+                workspaces:
+                  - name: source
+                    workspace: src
+                runAfter:
+                  - build
+                params:
+                  - name: IMAGETOSCAN
+                    value: "$(tasks.build.results.IMAGE_URL)@$(tasks.build.results.IMAGE_DIGEST)"
+                  - name: SBOMFILE
+                    value: "$(workspaces.source.path)/tomcat-sbom.cdx"
+              - name: vuln-scan
+                taskRef:
+                  name: vulnerability-sbom
+                workspaces:
+                  - name: source
+                    workspace: src
+                runAfter:
+                  - generate-sbom
+                params:
+                  - name: SBOM
+                    value: "$(workspaces.source.path)/tomcat-sbom.cdx"
               - name: deploy
                 taskRef:
                   name: openshift-client
                   kind: ClusterTask
                 runAfter:
-                  - build
+                  - vuln-scan
                 workspaces:
                   - name: manifest-dir
                     workspace: src
