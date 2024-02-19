@@ -34,6 +34,12 @@ To verify the signature and image attestation, you need to download the public k
 
 To verify the attestation on the public rekor service, visit https://search.sigstore.dev/ select 'Hash', and insert the the sha256 hash of the image 
 
+## Inspect a container's filesystem
+
+`podman unshare`
+
+`podman mount <myimage>`
+
 ## Reference
 
 https://docs.openshift.com/container-platform/4.13/cicd/pipelines/using-tekton-chains-for-openshift-pipelines-supply-chain-security.html#signing-secrets-in-tekton-chains_using-tekton-chains-for-openshift-pipelines-supply-chain-security

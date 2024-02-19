@@ -101,7 +101,7 @@
               #NEXUS_PASSWORD=mypass
               #MAVEN_MIRRORS=dev
               #DEV_MAVEN_MIRROR_ID=nexus
-              #DEV_MAVEN_MIRROR_URL=${env.NEXUS_HOST}/repository/maven-group/
+              #DEV_MAVEN_MIRROR_URL=${env.NEXUS_HOST}/repository/maven-central/
               #DEV_MAVEN_MIRROR_OF=<![CDATA[*]]>
 
     - name: Create Pipeline
@@ -168,6 +168,10 @@
                     value: "$(tasks.build.results.IMAGE_URL)@$(tasks.build.results.IMAGE_DIGEST)"
                   - name: SBOMFILE
                     value: "$(workspaces.source.path)/tomcat-sbom.cdx"
+                  - name: TLSVERIFY
+                    value: "false"
+                  - name: OUTPUT_IMAGE
+                    value: "image-registry.openshift-image-registry.svc:5000/{{ project }}/hello-tomcat:sbom"
               - name: vuln-scan
                 taskRef:
                   name: vulnerability-sbom
