@@ -38,7 +38,7 @@ To verify the attestation on the public rekor service, visit https://search.sigs
 
 `podman unshare`
 
-`podman mount <myimage>`
+`podman image mount <myimage>`
 
 ## Reference
 

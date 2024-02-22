@@ -4,6 +4,8 @@ This lab is used to demonstrate on how to use Change Data Capture with debezium
 
 ## Prerequirements
 
+A Kafka cluster already running and configured
+
 Before starting Debezium, the postgresql should be configured to create
 publication for all tables.
 
