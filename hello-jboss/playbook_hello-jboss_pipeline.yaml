@@ -30,7 +30,7 @@
     ocp_postgresql_service_port: "5432"
     amq_service_host: "amqbroker"
     amq_service_port: "61616"
-    mq_queues: "getTopItemsCommand,getTopOrdersCommand,createOrderCommand,invalidMessage"
+    mq_queues: "pingCommand,invalidMessage"
     mq_username: "user"
     mq_password: "password"
 
@@ -257,6 +257,7 @@
             env: |
               #GALLEON_PROVISION_DEFAULT_FAT_SERVER=false
               #MAVEN REPO TO PUSH ARTIFACTS TO
+              #NEXUS_HOST=http://nexus3.infra-tools.svc.cluster.local:8081
               #MAVEN_REPOS=nexus
               #NEXUS_MAVEN_REPO_ID=nexus
               #NEXUS_MAVEN_REPO_URL=http://nexus3:8081
@@ -265,7 +266,7 @@
               #MAVEN MIRROR
               #MAVEN_MIRRORS=dev
               #DEV_MAVEN_MIRROR_ID=nexus
-              #DEV_MAVEN_MIRROR_URL=http://nexus3:8081/repository/maven-group/
+              #DEV_MAVEN_MIRROR_URL=${env.NEXUS_HOST}/repository/maven-central/
               #DEV_MAVEN_MIRROR_OF=<![CDATA[*]]>
 
 
