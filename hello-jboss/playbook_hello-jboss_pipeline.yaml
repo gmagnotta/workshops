@@ -3,9 +3,9 @@
 # Playbook to create a Tekton Pipeline for jboss-eap project
 #
 
-- import_playbook: ../../container-utils/playbooks/playbook_initialize_project.yaml
+#- import_playbook: ../../container-utils/playbooks/playbook_initialize_project.yaml
 
-- import_playbook: ../../container-utils/playbooks/playbook_provision_postgresql.yaml
+#- import_playbook: ../../container-utils/playbooks/playbook_provision_postgresql.yaml
 
 - import_playbook: ../amq-broker-lab/playbook_amqbroker.yaml
 
@@ -25,6 +25,7 @@
     sso_secret: "password"
     sso_url: "sso.localdomain"
     sso_client: "hello-jboss"
+    sso_realm: "jboss"
     sso_truststore_password: "ssopassword"
     ocp_postgresql_service_host: "postgresql"
     ocp_postgresql_service_port: "5432"
@@ -125,7 +126,7 @@
             namespace: "{{ project }}"
           data:
             enable-generate-default-datasource: 'false'
-            sso-url: "https://{{ sso_url }}/realms/jboss"
+            sso-url: "https://{{ sso_url }}/realms/{{ sso_realm }}"
             sso-client: "{{ sso_client }}"
             hostname-http: "{{ hostname_http }}"
             hostname-https: "{{ hostname_https }}"
