@@ -4,7 +4,7 @@
 #
 # It will provision an user with username "user" and password "password"
 #
-- name: Deploy 3scale in OpenShift cluster
+- name: Deploy AMQ Broker in OpenShift cluster
   hosts: localhost
   vars:
     project: "amqbroker-project"
@@ -58,6 +58,10 @@
             name: amqbroker
             namespace: "{{ project }}"
           spec:
+            acceptors:
+            - name: my-acceptor
+              protocols: all
+              port: 61616
             deploymentPlan:
               size: 1
               image: placeholder
