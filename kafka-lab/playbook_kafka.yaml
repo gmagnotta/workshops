@@ -26,7 +26,7 @@
             installPlanApproval: Automatic
             source: redhat-operators
             sourceNamespace: openshift-marketplace
-            startingCSV: amqstreams.v2.6.0-0
+            startingCSV: amqstreams.v2.6.0-1
 
     - name: Wait for Operator Installation
       ansible.builtin.pause:

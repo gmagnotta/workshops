@@ -9,6 +9,11 @@
   hosts: localhost
   vars:
     project: "kafka"
+    postgresql_host: "postgresql.hello-jboss.svc.cluster.local"
+    postgresql_username: "jboss"
+    postgresql_password: "jboss"
+    postgresql_dbname: "jboss"
+    postgresql_include_list: "public.orders, public.line_items, public.items"
   tasks:
 
     # Generates an user for Debezium
@@ -169,14 +174,14 @@
             tasksMax: 1  
             config:
               topic.prefix: jboss
-              database.hostname: postgresql.jboss.svc.cluster.local
+              database.hostname: "{{ postgresql_host }}"
               database.port: 5432
-              database.user: jboss
-              database.password: jboss
-              database.dbname: jboss
+              database.user: "{{ postgresql_username }}"
+              database.password: "{{ postgresql_password }}"
+              database.dbname: "{{ postgresql_dbname }}"
               database.server.name: dbserver1
               schema.include.list: public
-              table.include.list: public.orders, public.line_items, public.items
+              table.include.list: "{{ postgresql_include_list }}"
               tombstones.on.delete: false
               plugin.name: pgoutput
               transforms: unwrap
