@@ -1,8 +1,0 @@
-#!/bin/bash
-
-set -e
-
-/s2i/assemble
-
-mkdir /deployments
-mv /tmp/src/hello /tmp/src/prime /deployments

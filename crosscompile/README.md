@@ -2,7 +2,7 @@
 
 ## Work in progress
 
-Demonstrate on how to use K8s to perform cross compilation
+Demonstrate on how to use OpenShift Container Platform to perform cross compilation
 
 ## Notes
 
