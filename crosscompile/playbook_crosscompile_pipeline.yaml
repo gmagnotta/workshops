@@ -240,10 +240,10 @@
             - apiVersion: tekton.dev/v1beta1
               kind: PipelineRun
               metadata:
-                generateName: hello-tomcat-
+                generateName: crosscompile-
               spec:
                 pipelineRef:
-                  name: hello-tomcat
+                  name: crosscompile
                 workspaces:
                   - name: src
                     volumeClaimTemplate:
@@ -256,8 +256,7 @@
                         storageClassName: ocs-external-storagecluster-ceph-rbd
                         volumeMode: Filesystem
                       status: {}
-                  - configMap:
-                      name: hello-tomcat-s2ienvironment
+                  - emptyDir: {}
                     name: env
                   - emptyDir: {}
                     name: secureenv
