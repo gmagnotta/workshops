@@ -12,10 +12,15 @@
     project: "crosscompile"
     webhook_password: "mywebhookpassword"
     gitrepo: "https://github.com/gmagnotta/pico"
+    builderimage: "quay.io/gmagnotta/armv5-crosscompiler"
+    runtimeimage: "docker.io/library/debian@sha256:4978e36829464df16ff6e5da9db47c9bde43bcdfd782663fd903d96874b65286"
   tasks:
 
     - name: Import buildah_s2i_task
       shell: "oc apply -n {{ project }} -f https://raw.githubusercontent.com/gmagnotta/buildah_s2i/main/buildah_s2i_task.yaml"
+
+    - name: Import buildah_s2i_runtime_task
+      shell: "oc apply -n {{ project }} -f https://raw.githubusercontent.com/gmagnotta/buildah_s2i/main/buildah_s2i_runtime_task.yaml"
 
     - name: Import generate_sbom_task
       shell: "oc apply -n {{ project }} -f https://raw.githubusercontent.com/gmagnotta/container-utils/main/tekton/generate_sbom_task.yaml"
@@ -52,7 +57,7 @@
                 description: Cross compile toolchain
               from:
                 kind: DockerImage
-                name: quay.io/gmagnotta/crosscompiler
+                name: "{{ builderimage }}"
               name: latest
               referencePolicy:
                 type: Local
@@ -74,7 +79,7 @@
                 description: Runtime Image
               from:
                 kind: DockerImage
-                name: docker.io/library/debian@sha256:4978e36829464df16ff6e5da9db47c9bde43bcdfd782663fd903d96874b65286
+                name: "{{ runtimeimage }}"
               name: latest
               referencePolicy:
                 type: Local
