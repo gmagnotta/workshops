@@ -1,0 +1,23 @@
+name = "demo93-tomcat"
+description = "Giuseppe Demo including a tomcat hello world image"
+version = "0.0.1"
+modules = []
+groups = []
+distro = "rhel-93"
+
+[[containers]]
+source = "quay.io/gmagnotta/hello-tomcat:stable"
+
+[customizations.firewall]
+ports = ["22:tcp", "8080:tcp"]
+
+[[customizations.files]]
+path = "/etc/systemd/system/tomcat.service"
+mode = "0644"
+user = "root"
+group = "root"
+data = "[Unit]\nDescription=Podman container-e26f33586180f2804042616c856510aea05e23b0b14cfd9ba03bca44846347c5.service\nDocumentation=man:podman-generate-systemd(1)\nWants=network-online.target\nAfter=network-online.target\nRequiresMountsFor=%t/containers\n[Service]\nEnvironment=PODMAN_SYSTEMD_UNIT=%n\nRestart=on-failure\nTimeoutStopSec=70\nExecStart=/usr/bin/podman run --cidfile=%t/%n.ctr-id --cgroups=no-conmon --rm --sdnotify=conmon -d -ti -p 8080:8080 quay.io/gmagnotta/hello-tomcat:stable\nExecStop=/usr/bin/podman stop --ignore -t 10 --cidfile=%t/%n.ctr-id\nExecStopPost=/usr/bin/podman rm -f --ignore -t 10 --cidfile=%t/%n.ctr-id\nType=notify\nNotifyAccess=all\n[Install]\nWantedBy=default.target"
+
+[customizations.services]
+enabled = ["sshd", "tomcat"]
+

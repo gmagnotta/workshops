@@ -1,0 +1,7 @@
+name = "demo93-minimal-installer"
+description = "minimal blueprint for ostree commit"
+version = "0.0.1"
+modules = []
+groups = []
+distro = "rhel-93"
+

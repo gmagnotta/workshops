@@ -1,0 +1,10 @@
+name = "demo93-image"
+description = "Giuseppe Demo blueprint to customize image disk generated"
+version = "0.0.1"
+modules = []
+groups = []
+distro = "rhel-93"
+
+[[customizations.filesystem]]
+mountpoint = "/"
+size = 21474836480
