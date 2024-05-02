@@ -140,3 +140,6 @@ qemu-img convert -O raw -f qcow2 image.qcow2 image-raw.img
 
 # Embed kickstart in iso file
 mkksiso kickstart.ks 9509b4de-dc66-4020-9d24-86476ffe086f-installer.iso microshift-rpmostree-installer.iso
+
+# In case error: min-free-space-percent '3%' would be exceeded
+echo "min-free-space-percent=0" >> /usr/share/nginx/html/repo/config

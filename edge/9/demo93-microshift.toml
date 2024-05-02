@@ -18,6 +18,9 @@ name = "openssh-server"
 name = "buildah"
 
 [[packages]]
+name = "cosign"
+
+[[packages]]
 name = "microshift"
 
 [[packages]]

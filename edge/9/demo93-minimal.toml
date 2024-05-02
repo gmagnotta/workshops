@@ -5,6 +5,9 @@ modules = []
 groups = []
 distro = "rhel-93"
 
+[[packages]]
+name = "cosign"
+
 [[customizations.sshkey]]
 user = "root"
 key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQClpxHhLQFEK80SFYHDbIxW4cVPV6UBVOzOezxrWy1VGCPE0m2TIU4JrcwP9vAZ8LSdrZk1oeX9janwVkM69t7rvefyAYh1fgYqvBeKzQajvO+qt6bjHCh/JZvnrZn7+oKn/WRY+4wzJEVdFAZHGqMkSQaczjsaxTVsohAuW0RCqClKiuX9ns/9ZQ5WsGgdkRCqjuq/1Eipy7cK0PR2RnmkCEPqeBXmn148wip1763RAty+zW7tEWjlBEGf9Mk+a28V2nTQDSnnjyMegwgSxMLuXgu7mM4yRVGjsWokPYVx9U3h+ABZCJ044V8DPF95AVL7e2+gIkMHCRIjQhCPU9SFXJR4zCcwNF/sCHLejkFw9SNsdQfPIaevVrxCf2CQ6Ww77gqQV4x18c6W/eOZKkTbJgLvK/OX6ZgEph78q3ldMFcge7jhF5TTA8dKPqmAVwldduvE0YgBG//oJjIzys8vXtyUzS/oyh2DmF2A1a0NF7iQqgozREOdF+42XD5IdKs= personal"

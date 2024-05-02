@@ -1,15 +1,12 @@
-name = "demo93-tomcat"
+name = "rhel8-tomcat"
 description = "Giuseppe Demo including a tomcat hello world image"
 version = "0.0.1"
 modules = []
 groups = []
-distro = "rhel-93"
+distro = "rhel-89"
 
 [[containers]]
 source = "quay.io/gmagnotta/hello-tomcat:stable"
-
-[[packages]]
-name = "cosign"
 
 [customizations.firewall]
 ports = ["22:tcp", "8080:tcp"]
