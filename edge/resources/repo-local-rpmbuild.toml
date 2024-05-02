@@ -1,0 +1,7 @@
+id = "local-rpm-build"
+name = "RPMs build locally"
+type = "yum-baseurl"
+url = "http://localhost/RPMS"
+check_gpg = false
+check_ssl = false
+system = false
