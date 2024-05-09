@@ -1,0 +1,109 @@
+---
+#
+# Playbook to deploy OCP Virtualization
+#
+
+- name: Deploy OCP Virtualization in OpenShift cluster
+  hosts: localhost
+  vars:
+    project: "openshift-cnv"
+    version: "v4.15.1"
+  tasks:
+
+    - name: Create Namespace
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: "{{ project }}"
+
+    - name: Create OperatorGroup
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: operators.coreos.com/v1
+          kind: OperatorGroup
+          metadata:
+            name: kubevirt-hyperconverged-group
+            namespace: "{{ project }}"
+          spec:
+            targetNamespaces:
+              - "{{ project }}"
+
+    - name: Create Subscription
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: operators.coreos.com/v1alpha1
+          kind: Subscription
+          metadata:
+            name: kubevirt-hyperconverged
+            namespace: "{{ project }}"
+          spec:
+            source: redhat-operators
+            sourceNamespace: openshift-marketplace
+            name: kubevirt-hyperconverged
+            startingCSV: kubevirt-hyperconverged-operator."{{ version }}"
+            channel: "stable"
+            installPlanApproval: Automatic
+
+    - name: Wait for Operator Installation
+      ansible.builtin.pause:
+        minutes: 5
+        prompt: "Check that operator is installed"
+
+    - name: Create HCO
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: hco.kubevirt.io/v1beta1
+          kind: HyperConverged
+          metadata:
+            name: kubevirt-hyperconverged
+            namespace: "{{ project }}"
+          spec:
+
+# HostPathProvisioner (HPP) custom resource, you can create virtual machines that
+# use local node storage.
+
+    - name: Create Namespace for nmstate
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: openshift-nmstate
+
+    - name: Create OperatorGroup
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: operators.coreos.com/v1
+          kind: OperatorGroup
+          metadata:
+            name: openshift-nmstate-kzd99
+            namespace: openshift-nmstate
+          spec:
+            targetNamespaces:
+              - openshift-nmstate
+            upgradeStrategy: Default
+
+    - name: Create Subscription
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: operators.coreos.com/v1alpha1
+          kind: Subscription
+          metadata:
+            name: kubernetes-nmstate-operator
+            namespace: openshift-nmstate
+          spec:
+            source: redhat-operators
+            sourceNamespace: openshift-marketplace
+            name: kubernetes-nmstate-operator
+            startingCSV: kubernetes-nmstate-operator.4.15.0-202404242206
+            channel: "stable"
+            installPlanApproval: Automatic
