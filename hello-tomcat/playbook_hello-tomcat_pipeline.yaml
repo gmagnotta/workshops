@@ -3,9 +3,6 @@
 # Playbook to create a Tekton Pipeline for hello-tomcat project
 #
 
-# Create Project
-- import_playbook: ../../container-utils/playbooks/playbook_initialize_project.yaml
-
 - name: Deploy Tomcat in OpenShift cluster
   hosts: localhost
   vars:
