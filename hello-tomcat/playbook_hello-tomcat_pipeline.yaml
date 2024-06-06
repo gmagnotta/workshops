@@ -116,6 +116,7 @@
               - name: env
               - name: secureenv
               - name: artifacts
+              - name: empty
             tasks:
               - name: fetch-repository
                 taskRef:
@@ -206,6 +207,60 @@
                       EOF
 
                       oc apply -k .
+              - name: export-image
+                params:
+                  - name: srcImageURL
+                    value: 'docker://$(tasks.build.results.IMAGE_URL)@$(tasks.build.results.IMAGE_DIGEST)'
+                  - name: destImageURL
+                    value: 'docker://quay.io/gmagnotta/hello-tomcat:latest'
+                  - name: srcTLSverify
+                    value: 'false'
+                  - name: destTLSverify
+                    value: 'false'
+                taskRef:
+                  kind: ClusterTask
+                  name: skopeo-copy
+                runAfter:
+                  - deploy
+                workspaces:
+                  - name: images-url
+                    workspace: empty
+              - name: export-sig
+                params:
+                  - name: srcImageURL
+                    value: 'docker://$(tasks.build.results.IMAGE_URL):sha256-$(tasks.build.results.SIMPLE_DIGEST).sig'
+                  - name: destImageURL
+                    value: 'docker://quay.io/gmagnotta/hello-tomcat:sha256-$(tasks.build.results.SIMPLE_DIGEST).sig'
+                  - name: srcTLSverify
+                    value: 'false'
+                  - name: destTLSverify
+                    value: 'false'
+                runAfter:
+                  - export-image
+                taskRef:
+                  kind: ClusterTask
+                  name: skopeo-copy
+                workspaces:
+                  - name: images-url
+                    workspace: empty
+              - name: export-att
+                params:
+                  - name: srcImageURL
+                    value: 'docker://$(tasks.build.results.IMAGE_URL):sha256-$(tasks.build.results.SIMPLE_DIGEST).att'
+                  - name: destImageURL
+                    value: 'docker://quay.io/gmagnotta/hello-tomcat:sha256-$(tasks.build.results.SIMPLE_DIGEST).att'
+                  - name: srcTLSverify
+                    value: 'false'
+                  - name: destTLSverify
+                    value: 'false'
+                runAfter:
+                  - export-image
+                taskRef:
+                  kind: ClusterTask
+                  name: skopeo-copy
+                workspaces:
+                  - name: images-url
+                    workspace: empty
 
     - name: Create TriggerBinding
       kubernetes.core.k8s:
