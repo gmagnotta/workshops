@@ -1,12 +1,13 @@
 ---
 #
-# Playbook to create Service interconnect in a namespace that provides services
+# Playbook to create Service interconnect in a namespace that require remote services
 #
 
 - name: Deploy Service Interconnect in a namespace
   hosts: localhost
   vars:
     project: "project"
+    # for installing cluster wide use project: openshift-operators
   
   tasks:
 
@@ -20,12 +21,12 @@
             name: skupper-operator
             namespace: "{{ project }}"
           spec:
-            channel: stable-1
+            channel: stable-1.5
             installPlanApproval: Automatic
             name: skupper-operator
             source: redhat-operators
             sourceNamespace: openshift-marketplace
-            startingCSV: skupper-operator.v1.5.4-rh-2
+            #startingCSV: skupper-operator.v1.5.4-rh-2
     
     - name: Search for skupper pod
       kubernetes.core.k8s_info:
@@ -40,10 +41,7 @@
     - name: Skupper init
       shell: skupper init -n {{ project }}
 
-    - name: Skupper token create
-      shell: skupper token create -n {{ project }} ~/secret.token
-
-  #
-  # skupper expose deployment/postgresql --port 5432
+    - name: Skupper link create
+      shell: skupper link create -n {{ project }} ~/secret.token
 
   # skupper status
