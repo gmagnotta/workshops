@@ -12,7 +12,7 @@
     project: "3scale"
     wildcard_domain: "apps.localdomain"
     sso_server: "sso-ingress.sso.localdomain"
-    s3_server: "s3.openshift-storage.svc"
+    s3_server: "s3.openshift-storage.svc.cluster.local"
   tasks:
 
     - name: Create Subscription
@@ -25,12 +25,12 @@
             name: 3scale-operator
             namespace: "{{ project }}"
           spec:
-            channel: threescale-2.14
+            channel: threescale-2.13
             name: 3scale-operator
             installPlanApproval: Automatic
             source: redhat-operators
             sourceNamespace: openshift-marketplace
-            startingCSV: 3scale-operator.v0.11.10
+            #startingCSV: 3scale-operator.v0.10.5
 
     - name: Create S3 Bucket
       kubernetes.core.k8s:
@@ -108,11 +108,22 @@
             AWS_HOSTNAME: "{{ bucket_host.stdout | b64encode }}"
             AWS_PROTOCOL: "SFRUUFM="
             AWS_PATH_STYLE: "dHJ1ZQ=="
-    
-    - name: Wait for Operator Installation
-      ansible.builtin.pause:
-        minutes: 5
-        prompt: "check that operator is installed"
+
+    - name: Search for 3scale operator pod
+      kubernetes.core.k8s_info:
+        kind: Pod
+        label_selectors:
+          - "app = 3scale-api-management"
+          - "control-plane = controller-manager"
+      register: pod_list
+      until: pod_list|json_query('resources[*].status.phase')|unique == ["Running"]
+      retries: 10
+      delay: 10
+
+    # - name: Wait for Operator Installation
+    #   ansible.builtin.pause:
+    #     minutes: 5
+    #     prompt: "check that operator is installed"
 
     - name: Create APIManager
       kubernetes.core.k8s:
@@ -198,6 +209,24 @@
         msg: "MASTER_PASSWORD={{ master_password.stdout }}"
 
 
+    # - name: Wait for Initialization
+    #   ansible.builtin.pause:
+    #     minutes: 5
+    #     prompt: "Wait for initialization"
+
+    - name: Search for Zync-que
+      kubernetes.core.k8s_info:
+        kind: Pod
+        label_selectors:
+          - "app = 3scale-api-management"
+          - "deploymentconfig = zync-que"
+          - "threescale_component_element = zync-que"
+          - "threescale_component = zync"
+      register: pod_list
+      until: pod_list|json_query('resources[*].status.phase')|unique == ["Running"]
+      retries: 10
+      delay: 10
+
     - name: Export PEM Cert from SSO
       shell: /usr/bin/openssl s_client -showcerts -connect {{ sso_server }}:443 </dev/null 2>/dev/null|openssl x509 -outform PEM >sso.pem
 
@@ -213,16 +242,55 @@
     - name: Modify dc/zync-que
       command: oc set volume dc/zync-que -n {{ project }} --add --name=zync-ca-bundle --mount-path /etc/pki/tls/zync/zync.pem --sub-path zync.pem --source='{"configMap":{"name":"zync-ca-bundle","items":[{"key":"zync.pem","path":"zync.pem"}]}}'
 
+    - name: Search for Zync-que
+      kubernetes.core.k8s_info:
+        kind: Pod
+        label_selectors:
+          - "app = 3scale-api-management"
+          - "deploymentconfig = zync-que"
+          - "threescale_component_element = zync-que"
+          - "threescale_component = zync"
+      register: pod_list
+      until: pod_list|json_query('resources[*].status.phase')|unique == ["Running"]
+      retries: 10
+      delay: 10
+
     - name: Modify dc/zync-que
       command: oc set env dc/zync-que -n {{ project }} SSL_CERT_FILE=/etc/pki/tls/zync/zync.pem
 
 # https://access.redhat.com/solutions/6980338
 
+    - name: Search for Zync-que
+      kubernetes.core.k8s_info:
+        kind: Pod
+        label_selectors:
+          - "app = 3scale-api-management"
+          - "deploymentconfig = zync-que"
+          - "threescale_component_element = zync-que"
+          - "threescale_component = zync"
+      register: pod_list
+      until: pod_list|json_query('resources[*].status.phase')|unique == ["Running"]
+      retries: 10
+      delay: 10
+
     - name: Export PEM Cert from S3
       shell: oc rsh -n {{ project }} dc/zync-que  echo -n | openssl s_client -connect {{ s3_server }}:443 -servername {{ s3_server }} --showcerts | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' > /tmp/S3Certs.pem 2>/dev/null
 
-    - name: Copy PEM Cert locally
-      shell: oc rsh -n {{ project }} dc/zync-que cat /tmp/S3Certs.pem > S3Certs.pem 2>/dev/null
+    # - name: Copy PEM Cert locally
+    #   shell: oc rsh -n {{ project }} dc/zync-que cat /tmp/S3Certs.pem > S3Certs.pem 2>/dev/null
+
+    - name: Search for System-sidekiq
+      kubernetes.core.k8s_info:
+        kind: Pod
+        label_selectors:
+          - "app = 3scale-api-management"
+          - "deploymentconfig = system-sidekiq"
+          - "threescale_component_element = sidekiq"
+          - "threescale_component = system"
+      register: pod_list
+      until: pod_list|json_query('resources[*].status.phase')|unique == ["Running"]
+      retries: 10
+      delay: 10
 
     - name: Export Original Sidekiq PEM Cert
       shell: oc rsh -n {{ project }} -c system-sidekiq dc/system-sidekiq cat /etc/pki/tls/cert.pem > SidekiqCerts.pem 2>/dev/null
@@ -236,9 +304,35 @@
     - name: Set volume from configmap
       shell: oc set volume dc/system-sidekiq -n {{ project }} --add --overwrite --name=customcerts --mount-path=/etc/pki/tls/custom/SidekiqCerts.pem --sub-path=SidekiqCerts.pem --source='{"configMap":{"name":"sidekiqcerts"}}'
 
+    - name: Search for System-sidekiq
+      kubernetes.core.k8s_info:
+        kind: Pod
+        label_selectors:
+          - "app = 3scale-api-management"
+          - "deploymentconfig = system-sidekiq"
+          - "threescale_component_element = sidekiq"
+          - "threescale_component = system"
+      register: pod_list
+      until: pod_list|json_query('resources[*].status.phase')|unique == ["Running"]
+      retries: 10
+      delay: 10
+
     - name: Set Env for sidekiq
       shell: oc set env dc/system-sidekiq -n {{ project }} SSL_CERT_FILE=/etc/pki/tls/custom/SidekiqCerts.pem
 
+
+    - name: Search for System-app
+      kubernetes.core.k8s_info:
+        kind: Pod
+        label_selectors:
+          - "app = 3scale-api-management"
+          - "deploymentconfig = system-app"
+          - "threescale_component_element = app"
+          - "threescale_component = system"
+      register: pod_list
+      until: pod_list|json_query('resources[*].status.phase')|unique == ["Running"]
+      retries: 10
+      delay: 10
     
     - name: Copy locally systemdeveloper certificate
       shell: oc rsh -n {{ project }} -c system-developer dc/system-app cat /etc/pki/tls/cert.pem > SystemAppCerts.pem 2>/dev/null
@@ -251,6 +345,19 @@
 
     - name: Set volume for system-app
       shell: oc set volume dc/system-app -n {{ project }} --add --overwrite --name=customcerts --mount-path=/etc/pki/tls/custom/SystemAppCerts.pem --sub-path=SystemAppCerts.pem --source='{"configMap":{"name":"systemappcerts"}}'
+
+    - name: Search for System-app
+      kubernetes.core.k8s_info:
+        kind: Pod
+        label_selectors:
+          - "app = 3scale-api-management"
+          - "deploymentconfig = system-app"
+          - "threescale_component_element = app"
+          - "threescale_component = system"
+      register: pod_list
+      until: pod_list|json_query('resources[*].status.phase')|unique == ["Running"]
+      retries: 10
+      delay: 10
 
     - name: Set ENV for system-app
       shell: oc set env dc/system-app -n {{ project }} SSL_CERT_FILE=/etc/pki/tls/custom/SystemAppCerts.pem
