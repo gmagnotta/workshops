@@ -1,0 +1,88 @@
+---
+#
+# Playbook to create Dev Spaces
+#
+
+- name: Deploy Dev Spaces
+  hosts: localhost
+  
+  tasks:
+
+    - name: Create Subscription
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: operators.coreos.com/v1alpha1
+          kind: Subscription
+          metadata:
+            name: devspaces
+            namespace: openshift-operators
+          spec:
+            channel: stable
+            installPlanApproval: Automatic
+            name: devspaces
+            source: redhat-operators
+            sourceNamespace: openshift-marketplace
+    
+    - name: Search pod
+      kubernetes.core.k8s_info:
+        kind: Pod
+        label_selectors:
+          - "app = devspaces-operator"
+          - "app.kubernetes.io/component = devspaces-operator"
+          - "app.kubernetes.io/name = devspaces"
+      register: pod_list
+      until: pod_list|json_query('resources[*].status.phase')|unique == ["Running"]
+      retries: 10
+      delay: 10
+
+    - name: Create Subscription
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: openshift-devspaces
+
+    - name: Create Subscription
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: org.eclipse.che/v2
+          kind: CheCluster
+          metadata:
+            name: devspaces
+            namespace: openshift-devspaces
+          spec:
+            components:
+              cheServer:
+                debug: false
+                logLevel: INFO
+              dashboard:
+                logLevel: ERROR
+              metrics:
+                enable: true
+            containerRegistry: {}
+            devEnvironments:
+              startTimeoutSeconds: 300
+              secondsOfRunBeforeIdling: -1
+              maxNumberOfWorkspacesPerUser: -1
+              containerBuildConfiguration:
+                openShiftSecurityContextConstraint: container-build
+              defaultNamespace:
+                autoProvision: true
+                template: <username>-devspaces
+              secondsOfInactivityBeforeIdling: 1800
+              storage:
+                pvcStrategy: per-user
+            gitServices: {}
+            networking:
+              auth:
+                gateway:
+                  kubeRbacProxy:
+                    logLevel: 0
+                  oAuthProxy:
+                    cookieExpireSeconds: 86400
+                  traefik:
+                    logLevel: INFO
