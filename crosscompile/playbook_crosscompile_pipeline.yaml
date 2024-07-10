@@ -3,9 +3,6 @@
 # Playbook to create a Tekton Pipeline for cross compiling
 #
 
-# Create Project
-- import_playbook: ../../container-utils/playbooks/playbook_initialize_project.yaml
-
 - name: Perform cross compiling in OpenShift cluster
   hosts: localhost
   vars:
@@ -213,7 +210,7 @@
       kubernetes.core.k8s:
         state: present
         definition:
-          apiVersion: triggers.tekton.dev/v1alpha1
+          apiVersion: triggers.tekton.dev/v1beta1
           kind: TriggerBinding
           metadata:
             name: event-binding
@@ -227,7 +224,7 @@
       kubernetes.core.k8s:
         state: present
         definition:
-          apiVersion: triggers.tekton.dev/v1alpha1
+          apiVersion: triggers.tekton.dev/v1beta1
           kind: TriggerTemplate
           metadata:
             name: push-trigger-template
