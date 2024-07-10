@@ -8,7 +8,7 @@
     project: "openshift-user-workload-monitoring"
   tasks:
 
-    - name: Create ConfigMap
+    - name: Enable Monitoring for User defined project
       kubernetes.core.k8s:
         state: present
         definition:

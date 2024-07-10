@@ -7,3 +7,14 @@ This lab is used to demonstrate on how user workload monitoring works in OCP
 see https://developers.redhat.com/articles/2023/08/08/how-monitor-workloads-using-openshift-monitoring-stack#
 
 https://docs.openshift.com/container-platform/4.14/monitoring/monitoring-overview.html
+
+#
+
+Developer users can monitor only projects where they have the view role permissions.
+
+Use the following command to grant view role permissions to a user or group
+
+oc create rolebinding view --clusterrole=view --user=user -n project
+oc create rolebinding view --clusterrole=view --group=group -n project
+
+oc get rolebindings -n project
