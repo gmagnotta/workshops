@@ -5,9 +5,8 @@
 
 - name: Deploy OCP Virtualization in OpenShift cluster
   hosts: localhost
-  vars:
-    project: "openshift-cnv"
-    version: "v4.15.1"
+  # vars:
+  #   project: "openshift-cnv"
   tasks:
 
     - name: Create Namespace
@@ -17,7 +16,7 @@
           apiVersion: v1
           kind: Namespace
           metadata:
-            name: "{{ project }}"
+            name: openshift-cnv
 
     - name: Create OperatorGroup
       kubernetes.core.k8s:
@@ -27,10 +26,10 @@
           kind: OperatorGroup
           metadata:
             name: kubevirt-hyperconverged-group
-            namespace: "{{ project }}"
+            namespace: openshift-cnv
           spec:
             targetNamespaces:
-              - "{{ project }}"
+              - openshift-cnv
 
     - name: Create Subscription
       kubernetes.core.k8s:
@@ -39,20 +38,32 @@
           apiVersion: operators.coreos.com/v1alpha1
           kind: Subscription
           metadata:
-            name: kubevirt-hyperconverged
-            namespace: "{{ project }}"
+            name: hco-operatorhub
+            namespace: openshift-cnv
           spec:
             source: redhat-operators
             sourceNamespace: openshift-marketplace
             name: kubevirt-hyperconverged
-            startingCSV: kubevirt-hyperconverged-operator."{{ version }}"
+            #startingCSV: kubevirt-hyperconverged-operator."{{ version }}"
             channel: "stable"
             installPlanApproval: Automatic
+            config:
+              env:
+              - name: KVM_EMULATION
+                value: "true"
 
-    - name: Wait for Operator Installation
-      ansible.builtin.pause:
-        minutes: 5
-        prompt: "Check that operator is installed"
+    - name: Search pod
+      kubernetes.core.k8s_info:
+        kind: Pod
+        label_selectors:
+          - "name = hyperconverged-cluster-operator"
+          - "app.kubernetes.io/component = deployment"
+          - "app.kubernetes.io/part-of = hyperconverged-cluster"
+          - "app.kubernetes.io/managed-by = olm"
+      register: pod_list
+      until: pod_list|json_query('resources[*].status.phase')|unique == ["Running"]
+      retries: 10
+      delay: 10
 
     - name: Create HCO
       kubernetes.core.k8s:
@@ -62,13 +73,13 @@
           kind: HyperConverged
           metadata:
             name: kubevirt-hyperconverged
-            namespace: "{{ project }}"
+            namespace: openshift-cnv
           spec:
 
 # HostPathProvisioner (HPP) custom resource, you can create virtual machines that
 # use local node storage.
 
-    - name: Create Namespace for nmstate
+    - name: Create Namespace
       kubernetes.core.k8s:
         state: present
         definition:
@@ -104,6 +115,6 @@
             source: redhat-operators
             sourceNamespace: openshift-marketplace
             name: kubernetes-nmstate-operator
-            startingCSV: kubernetes-nmstate-operator.4.15.0-202404242206
+            #startingCSV: kubernetes-nmstate-operator.4.15.0-202404242206
             channel: "stable"
             installPlanApproval: Automatic

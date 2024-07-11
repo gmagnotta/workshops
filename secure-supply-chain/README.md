@@ -27,8 +27,8 @@ To manually upload images, signature and attestation from local filesystem to an
 
 To verify the signature and image attestation, you need to download the public key used by cosign to sign and save it locally as cosign.pub.
 
-`cosign verify --key cosign.pub docker://image-registry.localdomain/project/image:mytag`
-`cosign verify-attestation --key cosign.pub --type slsaprovenance docker://image-registry.localdomain/project/image:mytag`
+`cosign verify --key cosign.pub image-registry.localdomain/project/image:mytag`
+`cosign verify-attestation --key cosign.pub --type slsaprovenance image-registry.localdomain/project/image:mytag`
 
 ## Verify Attestation on the public rekor service
 
