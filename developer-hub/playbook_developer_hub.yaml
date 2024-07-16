@@ -1,0 +1,291 @@
+---
+#
+# Playbook to deploy Developer HUB
+#
+- name: Deploy Developer HUB
+  hosts: localhost
+  tasks:
+
+    - name: Create Namespace
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: rhdh-operator
+
+    - name: Create OperatorGroup
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: operators.coreos.com/v1
+          kind: OperatorGroup
+          metadata:
+            name: rhdh-operator
+            namespace: rhdh-operator
+          spec:
+
+    - name: Create Subscription
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: operators.coreos.com/v1alpha1
+          kind: Subscription
+          metadata:
+            name: rhdh
+            namespace: rhdh-operator
+          spec:
+            source: redhat-operators
+            sourceNamespace: openshift-marketplace
+            name: rhdh
+            channel: fast-1.2
+            installPlanApproval: Automatic
+
+    - name: Search pod
+      kubernetes.core.k8s_info:
+        kind: Pod
+        label_selectors:
+          - "app = rhdh-operator"
+      register: pod_list
+      until: pod_list|json_query('resources[*].status.phase')|unique == ["Running"]
+      retries: 10
+      delay: 10
+
+    - name: Create Namespace
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: developerhub
+
+    - name: Create Service Account
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          kind: Secret
+          apiVersion: v1
+          metadata:
+            name: rhdh-sa-token
+            namespace: developerhub
+            annotations:
+              kubernetes.io/service-account.name: default
+          type: kubernetes.io/service-account-token
+
+
+    - name: Create Secret
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          kind: Secret
+          apiVersion: v1
+          type: Opaque
+          metadata:
+            name: secrets-rhdh
+            namespace: developerhub
+          data:
+            SSO_CLIENT_ID: UkhESA==
+            SSO_CLIENT_SECRET: TE1mSmJ4ZFMybUFyQU8zRmdPbnlCaE9VVFdETmgwVFQ=
+            SSO_METADATA_URL: aHR0cHM6Ly9zc28uYXBwcy5jbHVzdGVyLWpoamttLmpoamttLnNhbmRib3gyODk2Lm9wZW50bGMuY29tL3JlYWxtcy9SSERI
+            SSO_BASEURL: aHR0cHM6Ly9zc28uYXBwcy5jbHVzdGVyLWpoamttLmpoamttLnNhbmRib3gyODk2Lm9wZW50bGMuY29t
+            BACKSTAGE_URL: aHR0cHM6Ly9iYWNrc3RhZ2UtZGV2ZWxvcGVyLWh1Yi1kZXZlbG9wZXJodWIuYXBwcy5jbHVzdGVyLWpoamttLmpoamttLnNhbmRib3gyODk2Lm9wZW50bGMuY29t
+            GITHUB_APP_CLIENT_ID: Z2hwXzg5V1NIcFpQRlN3eUN2ZGhkMUcyYVdnRDEySlBoNDJ6djk1bA==
+            K8S_SA_TOKEN: ZXlKaGJHY2lPaUpTVXpJMU5pSXNJbXRwWkNJNklqYzVZMk5qTFhBNVN6UjFRbGgyVVVkZmFESldPRkU0YlVFMFZHTkZWMVJJUVRZdFZuZGpaVUZMY1VFaWZRLmV5SnBjM01pT2lKcmRXSmxjbTVsZEdWekwzTmxjblpwWTJWaFkyTnZkVzUwSWl3aWEzVmlaWEp1WlhSbGN5NXBieTl6WlhKMmFXTmxZV05qYjNWdWRDOXVZVzFsYzNCaFkyVWlPaUprWlhabGJHOXdaWEpvZFdJaUxDSnJkV0psY201bGRHVnpMbWx2TDNObGNuWnBZMlZoWTJOdmRXNTBMM05sWTNKbGRDNXVZVzFsSWpvaWNtaGthQzF6WVMxMGIydGxiaUlzSW10MVltVnlibVYwWlhNdWFXOHZjMlZ5ZG1salpXRmpZMjkxYm5RdmMyVnlkbWxqWlMxaFkyTnZkVzUwTG01aGJXVWlPaUprWldaaGRXeDBJaXdpYTNWaVpYSnVaWFJsY3k1cGJ5OXpaWEoyYVdObFlXTmpiM1Z1ZEM5elpYSjJhV05sTFdGalkyOTFiblF1ZFdsa0lqb2lNMlF6WlRjNE9ERXRNVEV5TmkwME1qVmxMV0psT1dZdFlUUTNNemMwWkRabFpXUmpJaXdpYzNWaUlqb2ljM2x6ZEdWdE9uTmxjblpwWTJWaFkyTnZkVzUwT21SbGRtVnNiM0JsY21oMVlqcGtaV1poZFd4MEluMC5yWWZLeGdjVkFjYjdEejc5Ui03MzJ3T1lwcG05emg5aWxGLUVzNkZNX3YyR0VkOUhTYTJqZFJQWld1cVViam5oa21Cb3VBbkJvbXZIelI2OWg0bUtRa0JmUXhqaVdWX0JpTWxrWkt1UVNHVm9YUFpnM2VfeDk0Ukp3TUp0UEUxNVlYR0lwUk1CNjhtRzBmRjJwZjdFaEVvb3ktSExzbUozOERNd21RNGZGakN4cl9FSDVUOVI2Zk1VeGt6b2ZTdHBkNlcxVng5d2JzTkJhZ3N2QklIRmRwei11ME1OZG8tUEc4R2NXZ2szUUE3ZkhWRXdqTEw2dUtvbk1FcmRDaVNrOHdfNFVHaDJrSExhekUtb2JYUGh3MWF3aFpmZjJucWVmaE1PN08wUU9NVG80Mm1pUmFoUlRTd2RMQjZBYmtXTVI3RFlZaUU2TzQ5YnFTQkEyN1lRb2dCS2JDSVZSaFVwTUxYV3I2YVZFRmZVMU85TTRHZl9ycmY2QUNKSTI4WWFSNWQzdWh6N3NPc24zcXJXNndKMFFEX2gyVkxFem9UQkVyQUlzSW5KWWd2X2RLcUxoTGsyYjZVZ3Nqb0xQSGJOQ0MtajMyQk5UZEJGZkNNems0WVJPX2EzTmhPVkxEREs2OGZIRUcxSXdPRDE1YzBjZTE4WFRaZ2N5ZzhZeUViLXVpTDBtdEM0TXVOeE02X3Y1eTFHakhxYlJpVHNTNTRnRkNUUkQ2N0c4d3VkSVlNRWNCSU9aak5ELUgyM2NINlJQNDIwWmJGRW1ycFprVk8tMUZXYjhvZ0JMeVZpRmZWTDhRMENOaUgzMll1Z2RvSFJWVXQyZDB2dHNvS09WYkFXb1ZjNlgyQXpVWmhuUHkyMGxrNGRCVkE4TU8tNnZqa0luNGhIR2hMdm8wNA==
+
+    - name: Create ConfigMap
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          kind: ConfigMap
+          apiVersion: v1
+          metadata:
+            name: app-config-rhdh
+            namespace: developerhub
+          data:
+            "app-config-rhdh.yaml": |
+              app:
+                title: Giuseppe's Red Hat Developer Hub
+                baseUrl: ${BACKSTAGE_URL}
+              integrations:
+                github:
+                  - host: github.com
+                    token: ${GITHUB_APP_CLIENT_ID}
+              backend:
+                baseUrl: ${BACKSTAGE_URL}
+                cors:
+                  origin: ${BACKSTAGE_URL}
+              auth:
+                session:
+                  secret: supersecretcookie
+                environment: production
+                providers:
+                  oidc:
+                    production:
+                      clientId: ${SSO_CLIENT_ID}
+                      clientSecret: ${SSO_CLIENT_SECRET}
+                      metadataUrl: ${SSO_METADATA_URL}
+                      prompt: auto
+                      signIn:
+                        resolvers:
+                          - resolver: preferredUsernameMatchingUserEntityName
+              signInPage: oidc
+              permission:
+                enabled: true
+                rbac:
+                  authorizedUsers:
+                    - group:default/backstage
+                  admin:
+                    users:
+                      - name: group:default/admins
+              catalog:
+                providers:
+                    keycloakOrg:
+                      default:
+                        schedule:
+                          frequency: { minutes: 1 }
+                          timeout: { minutes: 1 }
+                          initialDelay: { seconds: 15 }
+                        baseUrl: https://sso.apps.cluster-jhjkm.jhjkm.sandbox2896.opentlc.com
+                        realm: 'HDH'
+                        loginRealm: RHDH
+                        clientId: ${SSO_CLIENT_ID}
+                        clientSecret: ${SSO_CLIENT_SECRET}
+                import:
+                  entityFilename: catalog-info.yaml
+                  pullRequestBranchName: backstage-integration
+                rules:
+                  - allow: [Component, System, Group, User, Resource, Location, Template, API]
+                locations:
+                  #- type: url
+                  #  target: https://github.com/gmagnotta/backstage-showcase/blob/main/catalog-entities/giuseppe.yaml
+                  - type: url
+                    target: https://github.com/gmagnotta/red-hat-developer-hub-software-templates/blob/main/templates.yaml
+              
+
+    - name: Create ConfigMap
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          kind: ConfigMap
+          apiVersion: v1
+          metadata:
+            name: dynamic-plugins-rhdh
+          data:
+            dynamic-plugins.yaml: |
+              includes:
+                - dynamic-plugins.default.yaml
+              plugins:
+                - package: './dynamic-plugins/dist/janus-idp-backstage-plugin-rbac'
+                  disabled: false
+                - package: './dynamic-plugins/dist/janus-idp-backstage-plugin-keycloak-backend-dynamic'
+                  disabled: false
+                - package: './dynamic-plugins/dist/janus-idp-backstage-plugin-tekton'
+                  disabled: false
+                  pluginConfig:
+                    dynamicPlugins:
+                      frontend:
+                        janus-idp.backstage-plugin-tekton:
+                          mountPoints:
+                            - mountPoint: entity.page.ci/cards
+                              importName: TektonCI
+                              config:
+                                layout:
+                                  gridColumn: "1 / -1"
+                                if:
+                                  allOf:
+                                    - isTektonCIAvailable
+                - package: './dynamic-plugins/dist/janus-idp-backstage-plugin-topology'
+                  disabled: false
+                  pluginConfig:
+                    dynamicPlugins:
+                      frontend:
+                        janus-idp.backstage-plugin-topology:
+                          mountPoints:
+                            - mountPoint: entity.page.topology/cards
+                              importName: TopologyPage
+                              config:
+                                layout:
+                                  gridColumn: "1 / -1"
+                                  height: 75vh
+                                if:
+                                  anyOf:
+                                    - hasAnnotation: backstage.io/kubernetes-id
+                                    - hasAnnotation: backstage.io/kubernetes-namespace
+                - package: './dynamic-plugins/dist/backstage-plugin-kubernetes-backend-dynamic'
+                  disabled: false
+                  pluginConfig:
+                    kubernetes:
+                      customResources:
+                      - group: 'tekton.dev'
+                        apiVersion: 'v1beta1'
+                        plural: 'pipelines'
+                      - group: 'tekton.dev'
+                        apiVersion: 'v1beta1'
+                        plural: 'pipelineruns'
+                      - group: 'tekton.dev'
+                        apiVersion: 'v1beta1'
+                        plural: 'taskruns'
+                      - group: 'route.openshift.io'
+                        apiVersion: 'v1'
+                        plural: 'routes'
+                      serviceLocatorMethod:
+                        type: 'multiTenant'
+                      clusterLocatorMethods:
+                        - type: 'config'
+                          clusters:
+                            - name: ocp
+                              url: https://https://api.cluster-jhjkm.jhjkm.sandbox2896.opentlc.com:6443
+                              authProvider: 'serviceAccount'
+                              skipTLSVerify: true
+                              skipMetricsLookup: true
+                              serviceAccountToken: ${K8S_SA_TOKEN}
+                - package: './dynamic-plugins/dist/backstage-plugin-kubernetes'
+                  disabled: false
+                  pluginConfig:
+                    dynamicPlugins:
+                      frontend:
+                        backstage.plugin-kubernetes:
+                          mountPoints:
+                            - mountPoint: entity.page.kubernetes/cards
+                              importName: EntityKubernetesContent
+                              config:
+                                layout:
+                                  gridColumn: "1 / -1"
+                                if:
+                                  anyOf:
+                                    - hasAnnotation: backstage.io/kubernetes-id
+                                    - hasAnnotation: backstage.io/kubernetes-namespace
+
+    - name: Create Backstage
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: rhdh.redhat.com/v1alpha1
+          kind: Backstage
+          metadata:
+            name: developer-hub
+            namespace: developerhub
+          spec:
+            database:
+              enableLocalDb: true
+            application:
+              appConfig:
+                mountPath: /opt/app-root/src
+                configMaps:
+                  - name: app-config-rhdh
+              extraEnvs:
+                envs:
+                  - name: NODE_TLS_REJECT_UNAUTHORIZED
+                    value: '0'
+                  - name: LOG_LEVEL
+                    value: 'debug'
+                secrets:
+                  - name: secrets-rhdh
+              extraFiles:
+                mountPath: /opt/app-root/src
+              dynamicPluginsConfigMapName: dynamic-plugins-rhdh
+              replicas: 1
+              route:
+                enabled: true
