@@ -4,6 +4,10 @@
 #
 - name: Deploy Developer HUB
   hosts: localhost
+  vars:
+    domain: "apps.cluster-jhjkm.jhjkm.sandbox2896.opentlc.com"
+    sso: "sso.apps.cluster-jhjkm.jhjkm.sandbox2896.opentlc.com"
+    ocp_api: "api.cluster-jhjkm.jhjkm.sandbox2896.opentlc.com:6443"
   tasks:
 
     - name: Create Namespace
@@ -61,39 +65,6 @@
           metadata:
             name: developerhub
 
-    - name: Create Service Account
-      kubernetes.core.k8s:
-        state: present
-        definition:
-          kind: Secret
-          apiVersion: v1
-          metadata:
-            name: rhdh-sa-token
-            namespace: developerhub
-            annotations:
-              kubernetes.io/service-account.name: default
-          type: kubernetes.io/service-account-token
-
-
-    - name: Create Secret
-      kubernetes.core.k8s:
-        state: present
-        definition:
-          kind: Secret
-          apiVersion: v1
-          type: Opaque
-          metadata:
-            name: secrets-rhdh
-            namespace: developerhub
-          data:
-            SSO_CLIENT_ID: UkhESA==
-            SSO_CLIENT_SECRET: TE1mSmJ4ZFMybUFyQU8zRmdPbnlCaE9VVFdETmgwVFQ=
-            SSO_METADATA_URL: aHR0cHM6Ly9zc28uYXBwcy5jbHVzdGVyLWpoamttLmpoamttLnNhbmRib3gyODk2Lm9wZW50bGMuY29tL3JlYWxtcy9SSERI
-            SSO_BASEURL: aHR0cHM6Ly9zc28uYXBwcy5jbHVzdGVyLWpoamttLmpoamttLnNhbmRib3gyODk2Lm9wZW50bGMuY29t
-            BACKSTAGE_URL: aHR0cHM6Ly9iYWNrc3RhZ2UtZGV2ZWxvcGVyLWh1Yi1kZXZlbG9wZXJodWIuYXBwcy5jbHVzdGVyLWpoamttLmpoamttLnNhbmRib3gyODk2Lm9wZW50bGMuY29t
-            GITHUB_APP_CLIENT_ID: Z2hwXzg5V1NIcFpQRlN3eUN2ZGhkMUcyYVdnRDEySlBoNDJ6djk1bA==
-            K8S_SA_TOKEN: ZXlKaGJHY2lPaUpTVXpJMU5pSXNJbXRwWkNJNklqYzVZMk5qTFhBNVN6UjFRbGgyVVVkZmFESldPRkU0YlVFMFZHTkZWMVJJUVRZdFZuZGpaVUZMY1VFaWZRLmV5SnBjM01pT2lKcmRXSmxjbTVsZEdWekwzTmxjblpwWTJWaFkyTnZkVzUwSWl3aWEzVmlaWEp1WlhSbGN5NXBieTl6WlhKMmFXTmxZV05qYjNWdWRDOXVZVzFsYzNCaFkyVWlPaUprWlhabGJHOXdaWEpvZFdJaUxDSnJkV0psY201bGRHVnpMbWx2TDNObGNuWnBZMlZoWTJOdmRXNTBMM05sWTNKbGRDNXVZVzFsSWpvaWNtaGthQzF6WVMxMGIydGxiaUlzSW10MVltVnlibVYwWlhNdWFXOHZjMlZ5ZG1salpXRmpZMjkxYm5RdmMyVnlkbWxqWlMxaFkyTnZkVzUwTG01aGJXVWlPaUprWldaaGRXeDBJaXdpYTNWaVpYSnVaWFJsY3k1cGJ5OXpaWEoyYVdObFlXTmpiM1Z1ZEM5elpYSjJhV05sTFdGalkyOTFiblF1ZFdsa0lqb2lNMlF6WlRjNE9ERXRNVEV5TmkwME1qVmxMV0psT1dZdFlUUTNNemMwWkRabFpXUmpJaXdpYzNWaUlqb2ljM2x6ZEdWdE9uTmxjblpwWTJWaFkyTnZkVzUwT21SbGRtVnNiM0JsY21oMVlqcGtaV1poZFd4MEluMC5yWWZLeGdjVkFjYjdEejc5Ui03MzJ3T1lwcG05emg5aWxGLUVzNkZNX3YyR0VkOUhTYTJqZFJQWld1cVViam5oa21Cb3VBbkJvbXZIelI2OWg0bUtRa0JmUXhqaVdWX0JpTWxrWkt1UVNHVm9YUFpnM2VfeDk0Ukp3TUp0UEUxNVlYR0lwUk1CNjhtRzBmRjJwZjdFaEVvb3ktSExzbUozOERNd21RNGZGakN4cl9FSDVUOVI2Zk1VeGt6b2ZTdHBkNlcxVng5d2JzTkJhZ3N2QklIRmRwei11ME1OZG8tUEc4R2NXZ2szUUE3ZkhWRXdqTEw2dUtvbk1FcmRDaVNrOHdfNFVHaDJrSExhekUtb2JYUGh3MWF3aFpmZjJucWVmaE1PN08wUU9NVG80Mm1pUmFoUlRTd2RMQjZBYmtXTVI3RFlZaUU2TzQ5YnFTQkEyN1lRb2dCS2JDSVZSaFVwTUxYV3I2YVZFRmZVMU85TTRHZl9ycmY2QUNKSTI4WWFSNWQzdWh6N3NPc24zcXJXNndKMFFEX2gyVkxFem9UQkVyQUlzSW5KWWd2X2RLcUxoTGsyYjZVZ3Nqb0xQSGJOQ0MtajMyQk5UZEJGZkNNems0WVJPX2EzTmhPVkxEREs2OGZIRUcxSXdPRDE1YzBjZTE4WFRaZ2N5ZzhZeUViLXVpTDBtdEM0TXVOeE02X3Y1eTFHakhxYlJpVHNTNTRnRkNUUkQ2N0c4d3VkSVlNRWNCSU9aak5ELUgyM2NINlJQNDIwWmJGRW1ycFprVk8tMUZXYjhvZ0JMeVZpRmZWTDhRMENOaUgzMll1Z2RvSFJWVXQyZDB2dHNvS09WYkFXb1ZjNlgyQXpVWmhuUHkyMGxrNGRCVkE4TU8tNnZqa0luNGhIR2hMdm8wNA==
-
     - name: Create ConfigMap
       kubernetes.core.k8s:
         state: present
@@ -104,18 +75,14 @@
             name: app-config-rhdh
             namespace: developerhub
           data:
-            "app-config-rhdh.yaml": |
+            app-config-rhdh.yaml: |
               app:
                 title: Giuseppe's Red Hat Developer Hub
-                baseUrl: ${BACKSTAGE_URL}
-              integrations:
-                github:
-                  - host: github.com
-                    token: ${GITHUB_APP_CLIENT_ID}
+                baseUrl: https://backstage-developer-hub-developerhub.{{ domain }}
               backend:
-                baseUrl: ${BACKSTAGE_URL}
+                baseUrl: https://backstage-developer-hub-developerhub.{{ domain }}
                 cors:
-                  origin: ${BACKSTAGE_URL}
+                  origin: https://backstage-developer-hub-developerhub.{{ domain }}
               auth:
                 session:
                   secret: supersecretcookie
@@ -125,7 +92,7 @@
                     production:
                       clientId: ${SSO_CLIENT_ID}
                       clientSecret: ${SSO_CLIENT_SECRET}
-                      metadataUrl: ${SSO_METADATA_URL}
+                      metadataUrl: https://{{ sso }}/realms/RHDH
                       prompt: auto
                       signIn:
                         resolvers:
@@ -147,8 +114,8 @@
                           frequency: { minutes: 1 }
                           timeout: { minutes: 1 }
                           initialDelay: { seconds: 15 }
-                        baseUrl: https://sso.apps.cluster-jhjkm.jhjkm.sandbox2896.opentlc.com
-                        realm: 'HDH'
+                        baseUrl: https://{{ sso }}
+                        realm: 'RHDH'
                         loginRealm: RHDH
                         clientId: ${SSO_CLIENT_ID}
                         clientSecret: ${SSO_CLIENT_SECRET}
@@ -156,13 +123,19 @@
                   entityFilename: catalog-info.yaml
                   pullRequestBranchName: backstage-integration
                 rules:
-                  - allow: [Component, System, Group, User, Resource, Location, Template, API]
+                  #- allow: [Component, System, Group, User, Resource, Location, Template, API]
+                  - allow: [Component, System, API, Resource, Location, Template]
                 locations:
                   #- type: url
                   #  target: https://github.com/gmagnotta/backstage-showcase/blob/main/catalog-entities/giuseppe.yaml
+                  #- type: url
+                  #  target: https://github.com/gmagnotta/red-hat-developer-hub-software-templates/blob/main/templates.yaml
                   - type: url
-                    target: https://github.com/gmagnotta/red-hat-developer-hub-software-templates/blob/main/templates.yaml
-              
+                    target: https://github.com/piomin/backstage-templates/blob/master/templates.yaml
+              integrations:
+                github:
+                  - host: github.com
+                    token: ${GITHUB_TOKEN}
 
     - name: Create ConfigMap
       kubernetes.core.k8s:
@@ -172,6 +145,7 @@
           apiVersion: v1
           metadata:
             name: dynamic-plugins-rhdh
+            namespace: developerhub
           data:
             dynamic-plugins.yaml: |
               includes:
@@ -236,11 +210,11 @@
                         - type: 'config'
                           clusters:
                             - name: ocp
-                              url: https://https://api.cluster-jhjkm.jhjkm.sandbox2896.opentlc.com:6443
+                              url: https://{{ ocp_api }}
                               authProvider: 'serviceAccount'
                               skipTLSVerify: true
                               skipMetricsLookup: true
-                              serviceAccountToken: ${K8S_SA_TOKEN}
+                              serviceAccountToken: ${OPENSHIFT_TOKEN}
                 - package: './dynamic-plugins/dist/backstage-plugin-kubernetes'
                   disabled: false
                   pluginConfig:

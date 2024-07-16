@@ -2,13 +2,9 @@
 
 # Configure SSO as defined here: https://docs.redhat.com/en/documentation/red_hat_developer_hub/1.2/html/getting_started_with_red_hat_developer_hub/assembly-auth-provider-oidc#proc-configuring-keycloak-with-oidc_rhdh-getting-started
 
-# configure github integration https://medium.com/@mifoster1723/sso-integrations-in-backstage-with-github-e40c2ec519a9
-
 # configure Keycloak import https://docs.redhat.com/en/documentation/red_hat_developer_hub/1.2/html/configuring_plugins_in_red_hat_developer_hub/rhdh-installing-dynamic-plugins#installation
-
 # Remember: Clients -> Client Id -> Service Account Roles -> Modify at the top 'service-account-rhdh' !!!!
 
+# Configure github integration https://medium.com/@mifoster1723/sso-integrations-in-backstage-with-github-e40c2ec519a9
 
 # Read https://piotrminkowski.com/2024/07/04/idp-on-openshift-with-red-hat-developer-hub/
-
-# Configure Kubernetes
