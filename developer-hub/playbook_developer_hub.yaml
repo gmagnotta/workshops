@@ -127,8 +127,8 @@
                     target: https://github.com/janus-idp/backstage-showcase/blob/main/catalog-entities/all.yaml
                   - type: url
                     target: https://github.com/redhat-developer/red-hat-developer-hub-software-templates/blob/main/templates.yaml
-                  #- type: url
-                  #  target: https://github.com/piomin/backstage-templates/blob/master/templates.yaml
+                  - type: url
+                    target: https://github.com/gmagnotta/backstage-templates/blob/master/templates.yaml
               integrations:
                 github:
                   - host: github.com
@@ -148,6 +148,60 @@
               includes:
                 - dynamic-plugins.default.yaml
               plugins:
+                - package: ./dynamic-plugins/dist/roadiehq-backstage-plugin-github-pull-requests
+                  disabled: true
+                  pluginConfig:
+                    dynamicPlugins:
+                      frontend:
+                        roadiehq.backstage-plugin-github-pull-requests:
+                          mountPoints:
+                            - mountPoint: entity.page.overview/cards
+                              importName: EntityGithubPullRequestsOverviewCard
+                              config:
+                                layout:
+                                  gridColumnEnd:
+                                    lg: "span 4"
+                                    md: "span 6"
+                                    xs: "span 12"
+                                if:
+                                  allOf:
+                                    - isGithubPullRequestsAvailable
+                            - mountPoint: entity.page.pull-requests/cards
+                              importName: EntityGithubPullRequestsContent
+                              config:
+                                layout:
+                                  gridColumn: "1 / -1"
+                                if:
+                                  allOf:
+                                    - isGithubPullRequestsAvailable
+                - package: './dynamic-plugins/dist/backstage-plugin-catalog-backend-module-github-dynamic'
+                  disabled: false
+                  pluginConfig: {}
+                - package: './dynamic-plugins/dist/janus-idp-backstage-plugin-argocd'
+                  disabled: false
+                  pluginConfig:
+                    dynamicPlugins:
+                      frontend:
+                        janus-idp.backstage-plugin-argocd:
+                          mountPoints:
+                            - mountPoint: entity.page.overview/cards
+                              importName: ArgocdDeploymentSummary
+                              config:
+                                layout:
+                                  gridColumnEnd:
+                                    lg: "span 8"
+                                    xs: "span 12"
+                                if:
+                                  allOf:
+                                    - isArgocdConfigured
+                            - mountPoint: entity.page.cd/cards
+                              importName: ArgocdDeploymentLifecycle
+                              config:
+                                layout:
+                                  gridColumn: '1 / -1'
+                                if:
+                                  allOf:
+                                    - isArgocdConfigured
                 - package: './dynamic-plugins/dist/janus-idp-backstage-plugin-rbac'
                   disabled: false
                 - package: './dynamic-plugins/dist/janus-idp-backstage-plugin-keycloak-backend-dynamic'
@@ -228,6 +282,44 @@
                                   anyOf:
                                     - hasAnnotation: backstage.io/kubernetes-id
                                     - hasAnnotation: backstage.io/kubernetes-namespace
+                - package: './dynamic-plugins/dist/roadiehq-backstage-plugin-argo-cd'
+                  disabled: false
+                  pluginConfig:
+                    dynamicPlugins:
+                      frontend:
+                        roadiehq.backstage-plugin-argo-cd:
+                          mountPoints:
+                            - mountPoint: entity.page.overview/cards
+                              importName: EntityArgoCDOverviewCard
+                              config:
+                                layout:
+                                  gridColumnEnd:
+                                    lg: "span 8"
+                                    xs: "span 12"
+                                if:
+                                  allOf:
+                                    - isArgocdAvailable
+                            - mountPoint: entity.page.cd/cards
+                              importName: EntityArgoCDHistoryCard
+                              config:
+                                layout:
+                                  gridColumn: "1 / -1"
+                                if:
+                                  allOf:
+                                    - isArgocdAvailable
+                - package: './dynamic-plugins/dist/roadiehq-scaffolder-backend-argocd-dynamic'
+                  disabled: false
+                  pluginConfig: {}
+                - package: ./dynamic-plugins/dist/roadiehq-backstage-plugin-argo-cd-backend-dynamic
+                  disabled: false
+                  pluginConfig:
+                    argocd:
+                      appLocatorMethods:
+                        - type: 'config'
+                          instances:
+                            - name: main
+                              url: "https://openshift-gitops-server-openshift-gitops.{{ domain }}"
+                              token: "${ARGOCD_TOKEN}"
 
     - name: Create Backstage
       kubernetes.core.k8s:

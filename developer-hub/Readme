@@ -1,17 +1,25 @@
-# Deploy Developer HUB
+# Developer HUB lab
 
-# Configure SSO as defined here: https://docs.redhat.com/en/documentation/red_hat_developer_hub/1.2/html/getting_started_with_red_hat_developer_hub/assembly-auth-provider-oidc#proc-configuring-keycloak-with-oidc_rhdh-getting-started
+This lab is used to demonstrate on how to install and use Red Hat Developer HUB.
 
-# Use Valid redirect url as: https://backstage-developer-hub-developerhub.apps.cluster-4lc6z.4lc6z.sandbox2336.opentlc.com/api/auth/oidc/handler/frame
+## Prerequirements
 
-# configure Keycloak import https://docs.redhat.com/en/documentation/red_hat_developer_hub/1.2/html/configuring_plugins_in_red_hat_developer_hub/rhdh-installing-dynamic-plugins#installation
-# Remember: Clients -> Client Id -> Service Account Roles -> Modify at the top 'service-account-rhdh' !!!!
+Configure SSO as defined here: https://docs.redhat.com/en/documentation/red_hat_developer_hub/1.2/html/getting_started_with_red_hat_developer_hub/assembly-auth-provider-oidc#proc-configuring-keycloak-with-oidc_rhdh-getting-started
 
-# Configure github integration https://medium.com/@mifoster1723/sso-integrations-in-backstage-with-github-e40c2ec519a9
+Remember to use a Valid redirect url as: https://backstage-developer-hub-developerhub.domain/api/auth/oidc/handler/frame
 
-# Read https://piotrminkowski.com/2024/07/04/idp-on-openshift-with-red-hat-developer-hub/
+Configure Keycloak import https://docs.redhat.com/en/documentation/red_hat_developer_hub/1.2/html/configuring_plugins_in_red_hat_developer_hub/rhdh-installing-dynamic-plugins#installation
 
-# Run playbook_developer_hub_secrets.yaml and then playbook_developer_hub.yaml
+In order to work, the Client Id needs to have query-groups, query-users and view-users roles.
+
+Remember: Clients -> Client Id -> Service Account Roles -> Click at the top 'service-account-rhdh' !!!!
+
+Configure github integration https://medium.com/@mifoster1723/sso-integrations-in-backstage-with-github-e40c2ec519a9
+
+
+## Setup
+
+Run playbook_developer_hub_secrets.yaml and then playbook_developer_hub.yaml
 
 ## RBAC
 
@@ -34,3 +42,7 @@ In the Add permission policies screen, select catalog in the Plugin field, and c
 Review your choices and click Create to create the policy.
 
 You should get a confirmation message that the policy creation was successful. Log out and log in as the user to whom you assigned the policy. Navigate to the Catalog page. Verify that a Create button is now visible. Similarly, click APIs and verify that you can see a Register Existing API button. This user is now allowed to create catalog items. You can assign permissions to delete and update catalog items in a similar manner using the RBAC Admin UI.
+
+## Resources
+
+https://piotrminkowski.com/2024/07/04/idp-on-openshift-with-red-hat-developer-hub/
