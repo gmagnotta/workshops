@@ -1,0 +1,48 @@
+---
+#
+# Playbook to create an installation of OpenShift GitOps
+#
+
+- name: Deploy GitOps
+  hosts: localhost
+  tasks:
+
+    - name: Create Namespace
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: openshift-gitops-operator
+            labels:
+              openshift.io/cluster-monitoring: 'true'
+
+
+    - name: Create OperatorGroup
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: operators.coreos.com/v1
+          kind: OperatorGroup
+          metadata:
+            name: openshift-gitops-operator
+            namespace: openshift-gitops-operator
+          spec:
+            upgradeStrategy: Default
+
+    - name: Create Subscription
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: operators.coreos.com/v1alpha1
+          kind: Subscription
+          metadata:
+            name: openshift-gitops-operator
+            namespace: openshift-gitops-operator
+          spec:
+            channel: latest
+            name: openshift-gitops-operator
+            installPlanApproval: Automatic
+            source: redhat-operators
+            sourceNamespace: openshift-marketplace
