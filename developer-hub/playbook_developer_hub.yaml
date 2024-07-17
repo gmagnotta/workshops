@@ -101,8 +101,6 @@
               permission:
                 enabled: true
                 rbac:
-                  authorizedUsers:
-                    - group:default/backstage
                   admin:
                     users:
                       - name: group:default/admins
@@ -123,15 +121,14 @@
                   entityFilename: catalog-info.yaml
                   pullRequestBranchName: backstage-integration
                 rules:
-                  #- allow: [Component, System, Group, User, Resource, Location, Template, API]
-                  - allow: [Component, System, API, Resource, Location, Template]
+                  - allow: [Component, System, Group, Resource, Location, Template, API]
                 locations:
-                  #- type: url
-                  #  target: https://github.com/gmagnotta/backstage-showcase/blob/main/catalog-entities/giuseppe.yaml
-                  #- type: url
-                  #  target: https://github.com/gmagnotta/red-hat-developer-hub-software-templates/blob/main/templates.yaml
                   - type: url
-                    target: https://github.com/piomin/backstage-templates/blob/master/templates.yaml
+                    target: https://github.com/janus-idp/backstage-showcase/blob/main/catalog-entities/all.yaml
+                  - type: url
+                    target: https://github.com/redhat-developer/red-hat-developer-hub-software-templates/blob/main/templates.yaml
+                  #- type: url
+                  #  target: https://github.com/piomin/backstage-templates/blob/master/templates.yaml
               integrations:
                 github:
                   - host: github.com

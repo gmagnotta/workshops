@@ -2,9 +2,35 @@
 
 # Configure SSO as defined here: https://docs.redhat.com/en/documentation/red_hat_developer_hub/1.2/html/getting_started_with_red_hat_developer_hub/assembly-auth-provider-oidc#proc-configuring-keycloak-with-oidc_rhdh-getting-started
 
+# Use Valid redirect url as: https://backstage-developer-hub-developerhub.apps.cluster-4lc6z.4lc6z.sandbox2336.opentlc.com/api/auth/oidc/handler/frame
+
 # configure Keycloak import https://docs.redhat.com/en/documentation/red_hat_developer_hub/1.2/html/configuring_plugins_in_red_hat_developer_hub/rhdh-installing-dynamic-plugins#installation
 # Remember: Clients -> Client Id -> Service Account Roles -> Modify at the top 'service-account-rhdh' !!!!
 
 # Configure github integration https://medium.com/@mifoster1723/sso-integrations-in-backstage-with-github-e40c2ec519a9
 
 # Read https://piotrminkowski.com/2024/07/04/idp-on-openshift-with-red-hat-developer-hub/
+
+# Run playbook_developer_hub_secrets.yaml and then playbook_developer_hub.yaml
+
+## RBAC
+
+After you have enabled the RBAC dynamic plugin and add users to the rbac.admin.users list in the app-config-rhdh ConfigMap, log in to RHDH and then click Administration in the bottom of the left sidebar.
+
+Notice that a new tab called RBAC is now enabled. There is a single role named rbac_admin declared with the users you declared in the rbac.admin.users list assigned to this role.
+
+Click on the role:default/rbac_admin link. The policy details page lists the users assigned to this role in the left column, and the list of permitted policies on the right.
+
+This user is allowed to create, edit, update and delete RBAC policies and view catalog items. With RBAC enabled, you need to explicitly allow users to create catalog items.
+
+Switch back the RBAC Administration page. Click Create to add a new policy.
+
+In the Create Role screen, enter allow-catalog-create-policy as the policy name, and enter a brief description. Click Next.
+
+In the Add users and groups screen, select users and groups that should be assigned to this role and click Next.
+
+In the Add permission policies screen, select catalog in the Plugin field, and catalog.entity.create in the Resource type field. Ensure Create is selected in the actions and click Next.
+
+Review your choices and click Create to create the policy.
+
+You should get a confirmation message that the policy creation was successful. Log out and log in as the user to whom you assigned the policy. Navigate to the Catalog page. Verify that a Create button is now visible. Similarly, click APIs and verify that you can see a Register Existing API button. This user is now allowed to create catalog items. You can assign permissions to delete and update catalog items in a similar manner using the RBAC Admin UI.
