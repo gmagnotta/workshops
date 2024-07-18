@@ -176,60 +176,11 @@
               includes:
                 - dynamic-plugins.default.yaml
               plugins:
-                - package: ./dynamic-plugins/dist/roadiehq-backstage-plugin-github-pull-requests
-                  disabled: true
-                  pluginConfig:
-                    dynamicPlugins:
-                      frontend:
-                        roadiehq.backstage-plugin-github-pull-requests:
-                          mountPoints:
-                            - mountPoint: entity.page.overview/cards
-                              importName: EntityGithubPullRequestsOverviewCard
-                              config:
-                                layout:
-                                  gridColumnEnd:
-                                    lg: "span 4"
-                                    md: "span 6"
-                                    xs: "span 12"
-                                if:
-                                  allOf:
-                                    - isGithubPullRequestsAvailable
-                            - mountPoint: entity.page.pull-requests/cards
-                              importName: EntityGithubPullRequestsContent
-                              config:
-                                layout:
-                                  gridColumn: "1 / -1"
-                                if:
-                                  allOf:
-                                    - isGithubPullRequestsAvailable
                 - package: './dynamic-plugins/dist/backstage-plugin-catalog-backend-module-github-dynamic'
                   disabled: false
                   pluginConfig: {}
                 - package: './dynamic-plugins/dist/janus-idp-backstage-plugin-argocd'
                   disabled: false
-                  pluginConfig:
-                    dynamicPlugins:
-                      frontend:
-                        janus-idp.backstage-plugin-argocd:
-                          mountPoints:
-                            - mountPoint: entity.page.overview/cards
-                              importName: ArgocdDeploymentSummary
-                              config:
-                                layout:
-                                  gridColumnEnd:
-                                    lg: "span 8"
-                                    xs: "span 12"
-                                if:
-                                  allOf:
-                                    - isArgocdConfigured
-                            - mountPoint: entity.page.cd/cards
-                              importName: ArgocdDeploymentLifecycle
-                              config:
-                                layout:
-                                  gridColumn: '1 / -1'
-                                if:
-                                  allOf:
-                                    - isArgocdConfigured
                 - package: './dynamic-plugins/dist/janus-idp-backstage-plugin-rbac'
                   disabled: false
                 - package: './dynamic-plugins/dist/janus-idp-backstage-plugin-keycloak-backend-dynamic'
@@ -245,40 +196,26 @@
                               importName: TektonCI
                               config:
                                 layout:
-                                  gridColumn: "1 / -1"
+                                  gridColumn: 1 / -1
+                                  gridRowStart: 1
                                 if:
                                   allOf:
                                     - isTektonCIAvailable
                 - package: './dynamic-plugins/dist/janus-idp-backstage-plugin-topology'
                   disabled: false
-                  pluginConfig:
-                    dynamicPlugins:
-                      frontend:
-                        janus-idp.backstage-plugin-topology:
-                          mountPoints:
-                            - mountPoint: entity.page.topology/cards
-                              importName: TopologyPage
-                              config:
-                                layout:
-                                  gridColumn: "1 / -1"
-                                  height: 75vh
-                                if:
-                                  anyOf:
-                                    - hasAnnotation: backstage.io/kubernetes-id
-                                    - hasAnnotation: backstage.io/kubernetes-namespace
                 - package: './dynamic-plugins/dist/backstage-plugin-kubernetes-backend-dynamic'
                   disabled: false
                   pluginConfig:
                     kubernetes:
                       customResources:
                       - group: 'tekton.dev'
-                        apiVersion: 'v1'
+                        apiVersion: 'v1beta1'
                         plural: 'pipelines'
                       - group: 'tekton.dev'
-                        apiVersion: 'v1'
+                        apiVersion: 'v1beta1'
                         plural: 'pipelineruns'
                       - group: 'tekton.dev'
-                        apiVersion: 'v1'
+                        apiVersion: 'v1beta1'
                         plural: 'taskruns'
                       - group: 'route.openshift.io'
                         apiVersion: 'v1'
@@ -299,45 +236,8 @@
                               serviceAccountToken: ${OPENSHIFT_TOKEN}
                 - package: './dynamic-plugins/dist/backstage-plugin-kubernetes'
                   disabled: false
-                  pluginConfig:
-                    dynamicPlugins:
-                      frontend:
-                        backstage.plugin-kubernetes:
-                          mountPoints:
-                            - mountPoint: entity.page.kubernetes/cards
-                              importName: EntityKubernetesContent
-                              config:
-                                layout:
-                                  gridColumn: "1 / -1"
-                                if:
-                                  anyOf:
-                                    - hasAnnotation: backstage.io/kubernetes-id
-                                    - hasAnnotation: backstage.io/kubernetes-namespace
                 - package: './dynamic-plugins/dist/roadiehq-backstage-plugin-argo-cd'
                   disabled: false
-                  pluginConfig:
-                    dynamicPlugins:
-                      frontend:
-                        roadiehq.backstage-plugin-argo-cd:
-                          mountPoints:
-                            - mountPoint: entity.page.overview/cards
-                              importName: EntityArgoCDOverviewCard
-                              config:
-                                layout:
-                                  gridColumnEnd:
-                                    lg: "span 8"
-                                    xs: "span 12"
-                                if:
-                                  allOf:
-                                    - isArgocdAvailable
-                            - mountPoint: entity.page.cd/cards
-                              importName: EntityArgoCDHistoryCard
-                              config:
-                                layout:
-                                  gridColumn: "1 / -1"
-                                if:
-                                  allOf:
-                                    - isArgocdAvailable
                 - package: './dynamic-plugins/dist/roadiehq-scaffolder-backend-argocd-dynamic'
                   disabled: false
                   pluginConfig: {}
@@ -350,7 +250,7 @@
                           instances:
                             - name: main
                               url: "https://openshift-gitops-server-openshift-gitops.{{ domain }}"
-                              token: "${ARGOCD_TOKEN}"
+                              token: ${ARGOCD_TOKEN}
 
     - name: Create Backstage
       kubernetes.core.k8s:
