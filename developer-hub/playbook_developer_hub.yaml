@@ -110,6 +110,15 @@
                 baseUrl: https://backstage-developer-hub-developerhub.{{ domain }}
                 cors:
                   origin: https://backstage-developer-hub-developerhub.{{ domain }}
+              proxy:
+                endpoints:
+                  '/argocd/api':
+                    target: "https://openshift-gitops-server-openshift-gitops.{{ domain }}/api/v1/"
+                    changeOrigin: true
+                    # this line is required if your hosted argoCD instance has self-signed certificate
+                    secure: false
+                    headers:
+                      Cookie: ${ARGOCD_AUTH_TOKEN}
               auth:
                 session:
                   secret: supersecretcookie
@@ -187,20 +196,6 @@
                   disabled: false
                 - package: './dynamic-plugins/dist/janus-idp-backstage-plugin-tekton'
                   disabled: false
-                  pluginConfig:
-                    dynamicPlugins:
-                      frontend:
-                        janus-idp.backstage-plugin-tekton:
-                          mountPoints:
-                            - mountPoint: entity.page.ci/cards
-                              importName: TektonCI
-                              config:
-                                layout:
-                                  gridColumn: 1 / -1
-                                  gridRowStart: 1
-                                if:
-                                  allOf:
-                                    - isTektonCIAvailable
                 - package: './dynamic-plugins/dist/janus-idp-backstage-plugin-topology'
                   disabled: false
                 - package: './dynamic-plugins/dist/backstage-plugin-kubernetes-backend-dynamic'
