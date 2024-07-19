@@ -6,8 +6,8 @@
   hosts: localhost
   vars:
     domain: "apps.cluster-jhjkm.jhjkm.sandbox2896.opentlc.com"
-    sso: "sso.apps.cluster-jhjkm.jhjkm.sandbox2896.opentlc.com"
-    ocp_api: "api.cluster-jhjkm.jhjkm.sandbox2896.opentlc.com:6443"
+    sso_url: "https://sso.apps.cluster-jhjkm.jhjkm.sandbox2896.opentlc.com"
+    ocp_api_url: "https://api.cluster-jhjkm.jhjkm.sandbox2896.opentlc.com:6443"
   tasks:
 
     - name: Create Namespace
@@ -149,7 +149,7 @@
                     production:
                       clientId: ${SSO_CLIENT_ID}
                       clientSecret: ${SSO_CLIENT_SECRET}
-                      metadataUrl: https://{{ sso }}/realms/RHDH
+                      metadataUrl: {{ sso_url }}/realms/RHDH
                       prompt: auto
                       signIn:
                         resolvers:
@@ -170,7 +170,7 @@
                           frequency: { minutes: 1 }
                           timeout: { minutes: 1 }
                           initialDelay: { seconds: 15 }
-                        baseUrl: https://{{ sso }}
+                        baseUrl: {{ sso_url }}
                         realm: 'RHDH'
                         loginRealm: RHDH
                         clientId: ${SSO_CLIENT_ID}
@@ -242,7 +242,7 @@
                         - type: 'config'
                           clusters:
                             - name: ocp
-                              url: https://{{ ocp_api }}
+                              url: {{ ocp_api_url }}
                               authProvider: 'serviceAccount'
                               skipTLSVerify: true
                               skipMetricsLookup: true
