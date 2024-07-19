@@ -31,6 +31,21 @@ The system is configured to use RBAC.
 
 In Keycloak you need a group 'admins' for users that can change configuration of Developer Hub and a group 'developers' for users that can use it.
 
+In ArgoCD please add:
+
+`  rbac:
+    defaultPolicy: ''
+    policy: |
+      g, system:cluster-admins, role:admin
+      g, cluster-admins, role:admin
+      p, backstage, applications, *, */*, allow
+      p, backstage, projects, *, *, allow
+    scopes: '[groups]'
+  extraConfig:
+    accounts.backstage: 'apiKey, login'
+`
+
+And generate a new token from the UI
 
 ## Resources
 

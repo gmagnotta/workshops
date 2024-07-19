@@ -36,7 +36,7 @@
       retries: 10
       delay: 10
 
-    - name: Create Subscription
+    - name: Create Namespace
       kubernetes.core.k8s:
         state: present
         definition:
@@ -44,6 +44,16 @@
           kind: Namespace
           metadata:
             name: openshift-devspaces
+
+    - name: Wait Namespace Creation
+      kubernetes.core.k8s_info:
+        kind: Namespace
+        label_selectors:
+          - "kubernetes.io/metadata.name = openshift-devspaces"
+      register: ns_list
+      until: ns_list|json_query('resources[*].status.phase')|unique == ["Active"]
+      retries: 10
+      delay: 10
 
     - name: Create Subscription
       kubernetes.core.k8s:

@@ -48,3 +48,11 @@ spec:
     managedNamespaceMetadata:
       labels:
         argocd.argoproj.io/managed-by: openshift-gitops`
+
+## Admin
+
+admin password is present in openshift-gitops namespace, in the openshift-gitops-cluster secret
+
+## Configure users
+
+Configure users as: https://docs.openshift.com/gitops/1.13/accesscontrol_usermanagement/configuring-argo-cd-rbac.html

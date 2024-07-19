@@ -1,3 +1,9 @@
 # SSO lab
 
 This lab is used to demonstrate on how SSO work inside OCP
+
+## Installation
+
+Run the deploy.sh script providing the SSO_HOSTNAME.
+
+You can find the admin password in the sso-initial-admin secret 
