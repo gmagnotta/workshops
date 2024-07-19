@@ -19,6 +19,16 @@
           metadata:
             name: rhdh-operator
 
+    - name: Wait Namespace Creation
+      kubernetes.core.k8s_info:
+        kind: Namespace
+        label_selectors:
+          - "kubernetes.io/metadata.name = rhdh-operator"
+      register: ns_list
+      until: ns_list|json_query('resources[*].status.phase')|unique == ["Active"]
+      retries: 10
+      delay: 10
+
     - name: Create OperatorGroup
       kubernetes.core.k8s:
         state: present
@@ -64,6 +74,16 @@
           kind: Namespace
           metadata:
             name: developerhub
+
+    - name: Wait Namespace Creation
+      kubernetes.core.k8s_info:
+        kind: Namespace
+        label_selectors:
+          - "kubernetes.io/metadata.name = developerhub"
+      register: ns_list
+      until: ns_list|json_query('resources[*].status.phase')|unique == ["Active"]
+      retries: 10
+      delay: 10
 
     - name: Create Rbac
       kubernetes.core.k8s:
@@ -113,12 +133,13 @@
               proxy:
                 endpoints:
                   '/argocd/api':
-                    target: "https://openshift-gitops-server-openshift-gitops.{{ domain }}/api/v1/"
+                    target: https://openshift-gitops-server-openshift-gitops.{{ domain }}/api/v1/
                     changeOrigin: true
                     # this line is required if your hosted argoCD instance has self-signed certificate
                     secure: false
                     headers:
-                      Cookie: ${ARGOCD_AUTH_TOKEN}
+                      Cookie: 
+                        $env: ARGOCD_AUTH_TOKEN
               auth:
                 session:
                   secret: supersecretcookie
