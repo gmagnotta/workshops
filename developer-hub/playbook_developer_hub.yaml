@@ -263,7 +263,7 @@
                           instances:
                             - name: main
                               url: "https://openshift-gitops-server-openshift-gitops.{{ domain }}"
-                              token: ${ARGOCD_AUTH_TOKEN}
+                              token: ${ARGOCD_TOKEN}
 
     - name: Create Backstage
       kubernetes.core.k8s:
