@@ -140,6 +140,10 @@
                     headers:
                       Cookie: 
                         $env: ARGOCD_AUTH_TOKEN
+                  '/sonarqube':
+                    target: ${SONARQUBE_URL}/api
+                    allowedMethods: ['GET', 'POST']
+                    auth: "${SONARQUBE_TOKEN}:"
               auth:
                 session:
                   secret: supersecretcookie
@@ -191,6 +195,8 @@
                 github:
                   - host: github.com
                     token: ${GITHUB_TOKEN}
+                sonarQube:
+                  baseUrl: ${SONARQUBE_URL}
 
     - name: Create ConfigMap
       kubernetes.core.k8s:
@@ -264,6 +270,32 @@
                             - name: main
                               url: "https://openshift-gitops-server-openshift-gitops.{{ domain }}"
                               token: ${ARGOCD_TOKEN}
+                - package: ./dynamic-plugins/dist/backstage-plugin-sonarqube-backend-dynamic
+                  disabled: false
+                  pluginConfig:
+                    sonarqube:
+                      baseUrl: ${SONARQUBE_URL}
+                      apiKey: ${SONARQUBE_TOKEN}
+                - package: ./dynamic-plugins/dist/backstage-plugin-sonarqube
+                  disabled: false
+                  pluginConfig:
+                    dynamicPlugins:
+                      frontend:
+                        backstage.plugin-sonarqube:
+                          mountPoints:
+                            - mountPoint: entity.page.overview/cards
+                              importName: EntitySonarQubeCard
+                              config:
+                                layout:
+                                  gridColumnEnd:
+                                    lg: "span 4"
+                                    md: "span 6"
+                                    xs: "span 12"
+                                if:
+                                  allOf:
+                                    - isSonarQubeAvailable
+                - package: ./dynamic-plugins/dist/janus-idp-backstage-scaffolder-backend-module-sonarqube-dynamic
+                  disabled: false
 
     - name: Create Backstage
       kubernetes.core.k8s:

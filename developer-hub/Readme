@@ -4,6 +4,9 @@ This lab is used to demonstrate on how to install and use Red Hat Developer HUB.
 
 ## Prerequirements
 
+Install OpenShift Pipelines, OpenShift GitOps, Single Sign-On, Developer Workspace and SonarQube before developer hub to show useful templates to customers!
+
+
 You need keycloak with a realm to authenticate users. The realm should be called RHDH and also the client id.
 
 Configure SSO as defined here -> https://docs.redhat.com/en/documentation/red_hat_developer_hub/1.2/html/getting_started_with_red_hat_developer_hub/assembly-auth-provider-oidc#proc-configuring-keycloak-with-oidc_rhdh-getting-started
@@ -12,14 +15,14 @@ Remember to use a Valid redirect url as: https://backstage-developer-hub-develop
 
 Configure Keycloak import plugin -> https://docs.redhat.com/en/documentation/red_hat_developer_hub/1.2/html/configuring_plugins_in_red_hat_developer_hub/rhdh-installing-dynamic-plugins#installation
 
-
 In order to work, the Client Id needs to have query-groups, query-users and view-users roles.
 
-Remember: Clients -> Client Id -> Service Account Roles -> Click at the top 'service-account-rhdh' !!!!
+Remember: Clients -> Client Id -> Service Account Roles -> Click at the top 'service-account-rhdh' -> Role Mapping !!!!
 
 Configure github integration -> https://medium.com/@mifoster1723/sso-integrations-in-backstage-with-github-e40c2ec519a9
 
-Usually you need to install before OpenShift Pipelines and OpenShift GitOps to show useful templates to customers
+To generate a token for SonarQube, login as admin, then in top right on the profile icon, select my account, then security and generate an user token
+
 
 ## Setup
 
@@ -31,9 +34,10 @@ The system is configured to use RBAC.
 
 In Keycloak you need a group 'admins' for users that can change configuration of Developer Hub and a group 'developers' for users that can use it.
 
-In ArgoCD please add:
+In ArgoCD please edit `oc edit argocd openshift-gitops -n openshift-gitops`:
 
-`  rbac:
+`
+  rbac:
     defaultPolicy: ''
     policy: |
       g, system:cluster-admins, role:admin
@@ -45,7 +49,12 @@ In ArgoCD please add:
     accounts.backstage: 'apiKey, login'
 `
 
-And generate a new token from the UI
+oc patch argocd openshift-gitops -n openshift-gitops --type merge --patch '{"spec": {"rbac": {"policy": "g, system:cluster-admins, role:admin\ng, cluster-admins, role:admin\np, backstage, applications, *, */*, allow\np, backstage, projects, *, *, allow"}}}'
+
+oc patch argocd openshift-gitops -n openshift-gitops --type merge --patch '{"spec": {"extraConfig": {"accounts.backstage": "''apiKey, login''"}}}'
+
+
+And generate a new token from the UI.
 
 ## Resources
 

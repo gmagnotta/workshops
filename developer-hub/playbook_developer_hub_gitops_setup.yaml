@@ -1,0 +1,14 @@
+---
+#
+# Playbook to setup gitops for Developer HUB
+#
+
+- name: Setup GitOps
+  hosts: localhost
+  tasks:
+
+    - name: Update Policy
+      command: "oc patch argocd openshift-gitops -n openshift-gitops --type merge --patch '{\"spec\": {\"rbac\": {\"policy\": \"g, system:cluster-admins, role:admin\\ng, cluster-admins, role:admin\\np, backstage, applications, *, */*, allow\\np, backstage, projects, *, *, allow\"}}}'"
+
+    - name: Update Extraconfig
+      command: "oc patch argocd openshift-gitops -n openshift-gitops --type merge --patch '{\"spec\": {\"extraConfig\": {\"accounts.backstage\": \"''apiKey, login''\"}}}'"
