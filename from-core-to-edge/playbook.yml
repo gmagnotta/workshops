@@ -1,0 +1,32 @@
+---
+- name: Setup container runtime to accept only signed images
+  hosts: demo
+  tasks:
+    - name: Copy policy.json
+      ansible.builtin.copy:
+        src: policy.json
+        dest: /etc/containers/policy.json
+        backup: true
+        group: root
+        owner: root
+        mode: 0644
+
+    - name: Copy default.yaml
+      ansible.builtin.copy:
+        src: default.yaml
+        dest: /etc/containers/registries.d/default.yaml
+        backup: true
+        group: root
+        owner: root
+        mode: 0644
+
+    - name: Copy cosign.pub
+      ansible.builtin.copy:
+        src: cosign.pub
+        dest: /root/cosign.pub
+        backup: true
+        group: root
+        owner: root
+        mode: 0644
+
+      
