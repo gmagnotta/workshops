@@ -1,12 +1,16 @@
 # SSO lab
 
-This lab is used to demonstrate on how SSO work inside OCP
+This lab is used to demonstrate on how SSO works inside OCP
 
 ## Installation
 
-Run the deploy.sh script providing the SSO_HOSTNAME.
+Run the ansible playbook 'playbook_generate_certs.yml' providing the hostname variable that will be the public url. 
 
-You can find the admin password in the sso-initial-admin secret 
+It will create in files/ directory required self-signed certs.
+
+Then run the ansible playbook 'playbook_provision_sso.yaml'. Pay attention at the variables required from the imported playbooks.
+
+The playbook will create a test realm and a mytest client inside the realm.
 
 ## Configure OCP authentication to use Keycloak
 

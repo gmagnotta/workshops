@@ -2,6 +2,11 @@
 #
 # Playbook to create an installation of Red Hat SSO
 #
+- name: Initialize Project
+  ansible.builtin.import_playbook: ../various/playbook_initialize_project.yaml
+
+- name: Deploy Postgresql
+  ansible.builtin.import_playbook: ../various/playbook_provision_postgresql.yaml
 
 - name: Deploy SSO in OpenShift cluster
   hosts: localhost
@@ -16,6 +21,8 @@
 
     - name: Create Subscription
       kubernetes.core.k8s:
+        api_key: "{{ api_key }}"
+        host: "{{ host_api }}"
         state: present
         definition:
           apiVersion: operators.coreos.com/v1alpha1
@@ -29,34 +36,47 @@
             installPlanApproval: Automatic
             source: redhat-operators
             sourceNamespace: openshift-marketplace
-            #startingCSV: rhbk-operator.v22.0.9-opr.1
+            #startingCSV: rhbk-operator.v22.0.13-opr.1
+        wait: true
+        wait_condition: 
+          reason: AllCatalogSourcesHealthy
+          status: false
+          type: CatalogSourcesUnhealthy
+        wait_timeout: 300
 
-    - name: Gen OpenSSL
-      command: openssl req -subj "/CN={{ hostname }}/O=Test Keycloak./C=US" -addext "subjectAltName = DNS:{{ hostname }}" -newkey rsa:2048 -nodes -keyout key.pem -x509 -days 365 -out certificate.pem
+    # - name: Gen OpenSSL
+    #   command: openssl req -subj "/CN={{ hostname }}/O=Test Keycloak./C=US" -addext "subjectAltName = DNS:{{ hostname }}" -newkey rsa:2048 -nodes -keyout key.pem -x509 -days 365 -out certificate.pem
+
+    - name: Check if example-tls-secret exists
+      kubernetes.core.k8s_info:
+        api_key: "{{ api_key }}"
+        host: "{{ host_api }}"
+        kind: Secret
+        name: example-tls-secret
+        namespace: "{{ project }}"
+      register: example_tls_secret
 
     - name: Import TLS
-      command: "oc create secret tls example-tls-secret --cert certificate.pem --key key.pem -n {{ project }}"
+      command: "oc create secret tls example-tls-secret --cert files/certificate.pem --key files/certificate.key -n {{ project }}"
+      when: example_tls_secret.resources | length == 0
+
+    - name: Check if keycloak-db-secret
+      kubernetes.core.k8s_info:
+        api_key: "{{ api_key }}"
+        host: "{{ host_api }}"
+        kind: Secret
+        name: keycloak-db-secret
+        namespace: "{{ project }}"
+      register: keycloak_db_secret
 
     - name: Import TLS
       command: "oc create secret generic keycloak-db-secret --from-literal=username={{ database_username }} --from-literal=password={{ database_password }} -n {{ project }}"
-
-    - name: Search for rhbk pod
-      kubernetes.core.k8s_info:
-        kind: Pod
-        label_selectors:
-          - "name = rhbk-operator"
-      register: pod_list
-      until: pod_list|json_query('resources[*].status.phase')|unique == ["Running"]
-      retries: 10
-      delay: 10
-
-    # - name: Wait for init
-    #   ansible.builtin.pause:
-    #     minutes: 5
-    #     prompt: "check that operator is installed"
+      when: keycloak_db_secret.resources | length == 0
 
     - name: Create Keycloak
       kubernetes.core.k8s:
+        api_key: "{{ api_key }}"
+        host: "{{ host_api }}"
         state: present
         definition:
           apiVersion: k8s.keycloak.org/v2alpha1
@@ -82,3 +102,96 @@
               hostname: "{{ hostname }}"
             ingress:
               className: openshift-default
+
+    - name: Search for rhbk pod
+      kubernetes.core.k8s_info:
+        api_key: "{{ api_key }}"
+        host: "{{ host_api }}"
+        kind: Pod
+        api_version: v1
+        namespace: "{{ project }}"
+        label_selectors:
+          - "app = keycloak"
+          - "app.kubernetes.io/instance = sso"
+        wait: yes
+        wait_sleep: 10
+        wait_timeout: 360
+
+    - name: Read Keycloak credentials
+      kubernetes.core.k8s_info:
+        api_key: "{{ api_key }}"
+        host: "{{ host_api }}"
+        kind: Secret
+        name: sso-initial-admin
+        namespace: "{{ project }}"
+      register: secret
+    
+    - name: Show username
+      ansible.builtin.debug:
+        msg: "{{ secret.resources[0].data.username | b64decode }}"
+
+    - name: Show password
+      ansible.builtin.debug:
+        msg: "{{ secret.resources[0].data.password | b64decode }}"
+
+    - name: Create or update Keycloak realm
+      community.general.keycloak_realm:
+        auth_client_id: admin-cli
+        auth_keycloak_url: "https://{{hostname}}/"
+        auth_realm: master
+        auth_username: "{{ secret.resources[0].data.username | b64decode }}"
+        auth_password: "{{ secret.resources[0].data.password | b64decode }}"
+        id: test
+        realm: test
+        state: present
+        enabled: true
+        ssl_required: all
+        validate_certs: false
+
+    - name: Create or update a Keycloak client
+      community.general.keycloak_client:
+        auth_client_id: admin-cli
+        auth_keycloak_url: "https://{{hostname}}/"
+        auth_realm: master
+        auth_username: "{{ secret.resources[0].data.username | b64decode }}"
+        auth_password: "{{ secret.resources[0].data.password | b64decode }}"
+        state: present
+        realm: test
+        client_id: mytest
+        name: test_client
+        description: Description of this wonderful client
+        root_url: https://www.example.com/
+        enabled: true
+        client_authenticator_type: client-secret
+        secret: REALLYWELLKEPTSECRET
+        redirect_uris:
+          - https://www.example.com/*
+          - http://localhost:8888/
+        web_origins:
+          - https://www.example.com/*
+        bearer_only: false
+        #consent_required: false
+        standard_flow_enabled: true
+        # implicit_flow_enabled: false
+        # direct_access_grants_enabled: false
+        # service_accounts_enabled: false
+        # authorization_services_enabled: false
+        public_client: false
+        # frontchannel_logout: false
+        protocol: openid-connect
+        # full_scope_allowed: false
+        # node_re_registration_timeout: -1
+        # client_template: test
+        # use_template_config: false
+        # use_template_scope: false
+        # use_template_mappers: false
+        # always_display_in_console: true
+        # registered_nodes:
+        #   node01.example.com: 1507828202
+        # registration_access_token: eyJWT_TOKEN
+        # surrogate_auth_required: false
+        # default_roles:
+        #   - test01
+        #   - test02
+        validate_certs: false
+      delegate_to: localhost

@@ -1,0 +1,100 @@
+---
+- name: Initialize a Project and essentials stuff (such as secrets)
+  hosts: localhost
+  vars:
+    project: "myproject"
+    api_key: "mytoken"
+    host_api: "https://api.domain.com:6443"
+    registry_name: "registryredhatio"
+    registry_hostname: "registry.redhat.io"
+    registry_username: "myuser"
+    registry_password: "mypassword"
+  tasks:
+
+    - name: Create {{ project }} Namespace
+      kubernetes.core.k8s:
+        api_key: "{{ api_key }}"
+        host: "{{ host_api }}"
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: "{{ project }}"
+            labels:
+             app: "{{ project }}"
+
+    - name: Create Registry {{ registry_name }} Secret
+      kubernetes.core.k8s:
+        api_key: "{{ api_key }}"
+        host: "{{ host_api }}"
+        state: present
+        template: secret.j2
+
+    # - name: Read secret
+    #   kubernetes.core.k8s_info:
+    #     api_key: "{{ api_key }}"
+    #     host: "{{ host_api }}"
+    #     kind: ServiceAccount
+    #     name: default
+    #     namespace: "{{ project }}"
+    #   register: default_service_account
+
+    - name: Link default secret
+      ansible.builtin.command: oc secrets link default {{ registry_name }} --for=pull -n {{ project }}
+
+    # - name: Link default secret
+    #   kubernetes.core.k8s_json_patch:
+    #     api_key: "{{ api_key }}"
+    #     host: "{{ host_api }}"
+    #     kind: ServiceAccount
+    #     namespace: "{{ project }}"
+    #     name: default
+    #     patch:
+    #       - op: add
+    #         path: /imagePullSecrets
+    #         value:
+    #           - name: "{{ registry_name }}"
+
+    - name: Link builder secret
+      ansible.builtin.command: oc secrets link builder {{ registry_name }} -n {{ project }}
+
+    # - name: Link builder secret
+    #   kubernetes.core.k8s_json_patch:
+    #     api_key: "{{ api_key }}"
+    #     host: "{{ host_api }}"
+    #     kind: ServiceAccount
+    #     namespace: "{{ project }}"
+    #     name: builder
+    #     patch:
+    #       - op: add
+    #         path: /secrets
+    #         value:
+    #           - name: "{{ registry_name }}"
+
+    - name: Create OperatorGroup
+      kubernetes.core.k8s:
+        api_key: "{{ api_key }}"
+        host: "{{ host_api }}"
+        state: present
+        definition:
+          apiVersion: operators.coreos.com/v1
+          kind: OperatorGroup
+          metadata:
+            name: "{{ project }}"
+            namespace: "{{ project }}"
+          spec:
+            targetNamespaces:
+              - "{{ project }}"
+            upgradeStrategy: Default
+
+# Grant view role permission to a user
+# oc adm policy add-role-to-user view <user> -n <project>
+
+# Grang view role permission to a group
+# oc adm policy add-role-to-group view <group> -n <project>
+
+# view - This role allows read-only access within a given namespace. It does not allow viewing or modifying of roles or role bindings. 
+# edit - This role grants read/write access within a given Kubernetes namespace. It cannot view or modify roles or role bindings.
+# admin - This role permits unlimited read/write access to resources within a namespace. This role can create roles and role bindings within a particular namespace. It does not permit write access to the namespace itself.
+# cluster-admin - This “superuser” can perform any action on any resource in a cluster. You can use this in a ClusterRoleBinding to grant full control over every resource in the cluster (and in all namespaces) or in a RoleBinding to grant full control over every resource in the respective namespace.
