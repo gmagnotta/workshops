@@ -8,14 +8,10 @@
     postgresql_database: "dbuser"
     postgresql_user: "dbuser"
     postgresql_password: "dbpassword"
-    api_key: "mytoken"
-    host_api: "http://myhost:6444"
   tasks:
 
     - name: Create ImageStream
       kubernetes.core.k8s:
-        api_key: "{{ api_key }}"
-        host: "{{ host_api }}"
         state: present
         definition:
           apiVersion: image.openshift.io/v1
@@ -38,8 +34,6 @@
 
     - name: Create PersistentVolumeClaim
       kubernetes.core.k8s:
-        api_key: "{{ api_key }}"
-        host: "{{ host_api }}"
         state: present
         definition:
           apiVersion: v1
@@ -56,8 +50,6 @@
 
     - name: Create ConfigMap
       kubernetes.core.k8s:
-        api_key: "{{ api_key }}"
-        host: "{{ host_api }}"
         state: present
         definition:
           apiVersion: v1
@@ -72,8 +64,6 @@
 
     - name: Create Secret
       kubernetes.core.k8s:
-        api_key: "{{ api_key }}"
-        host: "{{ host_api }}"
         state: present
         definition:
           apiVersion: v1
@@ -88,8 +78,6 @@
 
     - name: Create Deployment
       kubernetes.core.k8s:
-        api_key: "{{ api_key }}"
-        host: "{{ host_api }}"
         state: present
         definition:
           apiVersion: apps/v1
@@ -195,8 +183,6 @@
 
     - name: Create Service
       kubernetes.core.k8s:
-        api_key: "{{ api_key }}"
-        host: "{{ host_api }}"
         state: present
         definition:
           apiVersion: v1

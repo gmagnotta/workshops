@@ -21,8 +21,6 @@
 
     - name: Create Subscription
       kubernetes.core.k8s:
-        api_key: "{{ api_key }}"
-        host: "{{ host_api }}"
         state: present
         definition:
           apiVersion: operators.coreos.com/v1alpha1
@@ -49,8 +47,6 @@
 
     - name: Check if example-tls-secret exists
       kubernetes.core.k8s_info:
-        api_key: "{{ api_key }}"
-        host: "{{ host_api }}"
         kind: Secret
         name: example-tls-secret
         namespace: "{{ project }}"
@@ -62,8 +58,6 @@
 
     - name: Check if keycloak-db-secret
       kubernetes.core.k8s_info:
-        api_key: "{{ api_key }}"
-        host: "{{ host_api }}"
         kind: Secret
         name: keycloak-db-secret
         namespace: "{{ project }}"
@@ -75,8 +69,6 @@
 
     - name: Create Keycloak
       kubernetes.core.k8s:
-        api_key: "{{ api_key }}"
-        host: "{{ host_api }}"
         state: present
         definition:
           apiVersion: k8s.keycloak.org/v2alpha1
@@ -105,8 +97,6 @@
 
     - name: Search for rhbk pod
       kubernetes.core.k8s_info:
-        api_key: "{{ api_key }}"
-        host: "{{ host_api }}"
         kind: Pod
         api_version: v1
         namespace: "{{ project }}"
@@ -119,8 +109,6 @@
 
     - name: Read Keycloak credentials
       kubernetes.core.k8s_info:
-        api_key: "{{ api_key }}"
-        host: "{{ host_api }}"
         kind: Secret
         name: sso-initial-admin
         namespace: "{{ project }}"

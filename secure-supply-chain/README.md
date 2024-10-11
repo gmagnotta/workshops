@@ -3,7 +3,14 @@
 ## This repository is intended as a placeholder for collecting useful resources to demonstrate on how to build a secure supply chain.
 
 ## How to start
-After installing Tekton Chains, it will monitors TaskRun providing results [IMAGE_URL] and [IMAGE_DIGEST].
+
+Install cosign on your local machine and generate key-pair with the command:
+
+`cosign generate-key-pair --output-key-prefix=cosign`
+
+Then run the ansible playbook 'playbook_tekton_chains.yaml'
+
+After Tekton Chains is installed, it will monitors TaskRun providing results [IMAGE_URL] and [IMAGE_DIGEST].
 
 When the results are found, it will use cosign to automatically generate the signature of the image and the attestation.
 

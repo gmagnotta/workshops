@@ -3,8 +3,6 @@
   hosts: localhost
   vars:
     project: "myproject"
-    api_key: "mytoken"
-    host_api: "https://api.domain.com:6443"
     registry_name: "registryredhatio"
     registry_hostname: "registry.redhat.io"
     registry_username: "myuser"
@@ -13,8 +11,6 @@
 
     - name: Create {{ project }} Namespace
       kubernetes.core.k8s:
-        api_key: "{{ api_key }}"
-        host: "{{ host_api }}"
         state: present
         definition:
           apiVersion: v1
@@ -26,8 +22,6 @@
 
     - name: Create Registry {{ registry_name }} Secret
       kubernetes.core.k8s:
-        api_key: "{{ api_key }}"
-        host: "{{ host_api }}"
         state: present
         template: secret.j2
 
@@ -74,8 +68,6 @@
 
     - name: Create OperatorGroup
       kubernetes.core.k8s:
-        api_key: "{{ api_key }}"
-        host: "{{ host_api }}"
         state: present
         definition:
           apiVersion: operators.coreos.com/v1
