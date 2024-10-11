@@ -27,44 +27,38 @@
 
     # - name: Read secret
     #   kubernetes.core.k8s_info:
-    #     api_key: "{{ api_key }}"
-    #     host: "{{ host_api }}"
     #     kind: ServiceAccount
     #     name: default
     #     namespace: "{{ project }}"
     #   register: default_service_account
 
-    - name: Link default secret
-      ansible.builtin.command: oc secrets link default {{ registry_name }} --for=pull -n {{ project }}
-
     # - name: Link default secret
-    #   kubernetes.core.k8s_json_patch:
-    #     api_key: "{{ api_key }}"
-    #     host: "{{ host_api }}"
-    #     kind: ServiceAccount
-    #     namespace: "{{ project }}"
-    #     name: default
-    #     patch:
-    #       - op: add
-    #         path: /imagePullSecrets
-    #         value:
-    #           - name: "{{ registry_name }}"
+    #   ansible.builtin.command: oc secrets link default {{ registry_name }} --for=pull -n {{ project }}
 
-    - name: Link builder secret
-      ansible.builtin.command: oc secrets link builder {{ registry_name }} -n {{ project }}
+    - name: Link default secret
+      kubernetes.core.k8s_json_patch:
+        kind: ServiceAccount
+        namespace: "{{ project }}"
+        name: default
+        patch:
+          - op: add
+            path: /imagePullSecrets
+            value:
+              - name: "{{ registry_name }}"
 
     # - name: Link builder secret
-    #   kubernetes.core.k8s_json_patch:
-    #     api_key: "{{ api_key }}"
-    #     host: "{{ host_api }}"
-    #     kind: ServiceAccount
-    #     namespace: "{{ project }}"
-    #     name: builder
-    #     patch:
-    #       - op: add
-    #         path: /secrets
-    #         value:
-    #           - name: "{{ registry_name }}"
+    #   ansible.builtin.command: oc secrets link builder {{ registry_name }} -n {{ project }}
+
+    - name: Link builder secret
+      kubernetes.core.k8s_json_patch:
+        kind: ServiceAccount
+        namespace: "{{ project }}"
+        name: builder
+        patch:
+          - op: add
+            path: /secrets
+            value:
+              - name: "{{ registry_name }}"
 
     - name: Create OperatorGroup
       kubernetes.core.k8s:
