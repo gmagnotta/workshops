@@ -5,6 +5,8 @@
     project: "myproject"
     application_name: "debezium"
     volume_capacity: "1Gi"
+    schema_whitelist: "table"
+    sink: "http://mysink:8080"
   tasks:
 
     - name: Create ImageStream
@@ -46,7 +48,9 @@
                 storage: "{{ volume_capacity }}"
 
     - name: Create configmap
-      command: "oc create configmap application.properties -n {{ project }} --from-file=application.properties"
+      kubernetes.core.k8s:
+        state: present
+        template: application.properties.j2
 
     - name: Create Deployment
       kubernetes.core.k8s:
