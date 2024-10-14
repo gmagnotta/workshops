@@ -4,18 +4,24 @@ This lab is used to demonstrate on how service interconnect work inside OCP
 
 ## East cluster
 
-The east cluster is the one providing service that need to be accessed from others
-in is publictly reachable.
+The east cluster is the one providing services that needs to be accessed from others.
+It must be publictly reachable.
 
 On this cluster run playbook_service-interconnect_east.yaml
 
-When the playbook terminates, you can expose the needed deployments with:
+When the playbook terminates, you can expose the needed deployments. Eg.:
 
 `skupper expose deployment/postgresql --port 5432`
 
 ## West cluster
 
-The west cluster is the one that need to access the services provided by the east
-and is not publicitly reachable.
+The west cluster is the one that needs to access the services provided by the east cluster
+and it's not required that it's publicitly reachable. The only requirement is that
+it is cable to connect to east cluster.
 
 On this cluster run playbook_service-interconnect_west.yaml
+
+## Troubleshoot
+
+You can use `skupper status` or `skupper link status` to check what is going on.
+
