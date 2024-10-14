@@ -1,0 +1,31 @@
+---
+# Required variables
+# project, registry_username, registry_password, postgresql_database, postgresql_user, postgresql_password, 
+
+- name: Create Project
+  ansible.builtin.import_playbook: ../various/playbook_initialize_project.yaml
+
+- name: Provision Postgresql
+  ansible.builtin.import_playbook: ../various/playbook_provision_postgresql.yaml
+
+- name: Setup schema
+  ansible.builtin.import_playbook: ../various/playbook_run_sql_postgresql.yaml
+  vars:
+    postgresql_file: ../commander/files/schema.sql
+
+- name: Load data
+  ansible.builtin.import_playbook: ../various/playbook_run_sql_postgresql.yaml
+  vars:
+    postgresql_file: ../commander/files/import.sql
+
+- name: Enable publication
+  ansible.builtin.import_playbook: ../various/playbook_enable_publication_postgresql.yaml
+
+- name: Deploy commander application
+  hosts: localhost
+  vars:
+    project: commander
+  tasks:
+    - name: Deploy resources
+      ansible.builtin.shell: oc apply -n {{ project }} -k /home/gmagnott/src/examples/commander/src/main/k8s/overlays/prod/
+
