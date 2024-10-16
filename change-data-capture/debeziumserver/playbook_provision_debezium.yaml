@@ -7,6 +7,7 @@
     volume_capacity: "1Gi"
     schema_whitelist: "table"
     sink: "http://mysink:8080"
+    slot_name: "debezium0"
   tasks:
 
     - name: Create ImageStream

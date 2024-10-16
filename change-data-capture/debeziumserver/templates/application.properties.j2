@@ -19,7 +19,7 @@ data:
     debezium.source.schema.whitelist={{ schema_whitelist }}
     debezium.source.plugin.name=pgoutput
     debezium.source.topic.prefix=sample_prefix
-    debezium.source.slot.name=debezium2
+    debezium.source.slot.name={{ slot_name }}
     debezium.format.value=cloudevents
     debezium.format.key=json
     debezium.format.key.schemas.enable=false
