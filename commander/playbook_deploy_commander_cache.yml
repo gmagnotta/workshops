@@ -18,3 +18,4 @@
   vars:
     sink: http://commander-cache:8080
     schema_whitelist: Battalion,Member,Equipment
+    slot_name: west
