@@ -10,27 +10,27 @@
     slot_name: "debezium0"
   tasks:
 
-    - name: Create ImageStream
-      kubernetes.core.k8s:
-        state: present
-        definition:
-          apiVersion: image.openshift.io/v1
-          kind: ImageStream
-          metadata:
-            name: debezium
-            namespace: "{{ project }}"
-          spec:
-            lookupPolicy:
-              local: true
-            tags:
-              - annotations:
-                  description: Debezium server
-                from:
-                  kind: DockerImage
-                  name: "docker.io/debezium/server@sha256:f9cec4893e40f66de78d582821d67b2616957ac56aa2af46657b1f605e80f763"
-                name: "2.7"
-                referencePolicy:
-                  type: Local
+    # - name: Create ImageStream
+    #   kubernetes.core.k8s:
+    #     state: present
+    #     definition:
+    #       apiVersion: image.openshift.io/v1
+    #       kind: ImageStream
+    #       metadata:
+    #         name: debezium
+    #         namespace: "{{ project }}"
+    #       spec:
+    #         lookupPolicy:
+    #           local: true
+    #         tags:
+    #           - annotations:
+    #               description: Debezium server
+    #             from:
+    #               kind: DockerImage
+    #               name: "docker.io/debezium/server@sha256:f9cec4893e40f66de78d582821d67b2616957ac56aa2af46657b1f605e80f763"
+    #             name: "2.7"
+    #             referencePolicy:
+    #               type: Local
 
     - name: Create PersistentVolumeClaim
       kubernetes.core.k8s:
@@ -96,7 +96,7 @@
                       capabilities:
                         drop:
                         - ALL
-                    image: debezium:2.7
+                    image: docker.io/debezium/server@sha256:f9cec4893e40f66de78d582821d67b2616957ac56aa2af46657b1f605e80f763
                     volumeMounts:
                       - mountPath: /debezium/data
                         name: data
