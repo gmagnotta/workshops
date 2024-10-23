@@ -88,7 +88,7 @@ cd workshops/commander
 Provision the commander-cache project via ansible
 
 ```
-ansible-playbook -e project="commander-cache" \
+ansible-playbook -e project="commander" \
  -e registry_username="$REGISTRY_USERNAME" \
  -e registry_password="$REGISTRY_PASSWORD" \
  -e postgresql_database="commander" \
@@ -107,9 +107,9 @@ You can inspect the api /member, /equipment and /battalion to show that there is
 Install the Red Hat Service Interconnect router
 
 ```
-skupper init -n commander-cache
+skupper init -n commander
 
-skupper link create -n commander-cache secret.token
+skupper link create -n commander secret.token
 ```
 
 Now the remote postgresql database should be accessinble to debezium.
