@@ -33,10 +33,23 @@
         msg: "Found postgresql pod: {{ pod_list | json_query('resources[0].metadata.name') }}"
 
     - name: Copy file
-      shell: oc cp {{ postgresql_file }} {{ pod_list | json_query('resources[0].metadata.name') }}:/tmp/myfile.sql -n {{ project }}
+      kubernetes.core.k8s_cp:
+        namespace:  "{{ project }}"
+        pod: "{{ pod_list | json_query('resources[0].metadata.name') }}"
+        remote_path: /tmp/myfile.sql
+        local_path: "{{ postgresql_file }}"
+      #shell: oc cp {{ postgresql_file }} {{ pod_list | json_query('resources[0].metadata.name') }}:/tmp/myfile.sql -n {{ project }}
 
     - name: Run file
-      shell: oc exec {{ pod_list | json_query('resources[0].metadata.name') }} -n {{ project }} -- /usr/bin/psql -U {{ postgresql_user }} -d {{ postgresql_database }} -f /tmp/myfile.sql
+      kubernetes.core.k8s_exec:
+        namespace: "{{ project }}"
+        pod: "{{ pod_list | json_query('resources[0].metadata.name') }}"
+        command: "/usr/bin/psql -U {{ postgresql_user }} -d {{ postgresql_database }} -f /tmp/myfile.sql"
+      #shell: oc exec {{ pod_list | json_query('resources[0].metadata.name') }} -n {{ project }} -- /usr/bin/psql -U {{ postgresql_user }} -d {{ postgresql_database }} -f /tmp/myfile.sql
 
     - name: Delete file
-      shell: oc exec {{ pod_list | json_query('resources[0].metadata.name') }} -n {{ project }} -- rm /tmp/myfile.sql
+      kubernetes.core.k8s_exec:
+        namespace: "{{ project }}"
+        pod: "{{ pod_list | json_query('resources[0].metadata.name') }}"
+        command: "rm /tmp/myfile.sql"
+      #shell: oc exec {{ pod_list | json_query('resources[0].metadata.name') }} -n {{ project }} -- rm /tmp/myfile.sql

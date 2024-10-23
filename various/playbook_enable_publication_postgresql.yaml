@@ -25,7 +25,7 @@
       when: cdc|bool == true
 
     - name: Enable Publication
-      shell: oc exec {{ pod_list | json_query('resources[0].metadata.name') }} -n {{ project }} -- /usr/bin/psql {{ postgresql_user }} -c "CREATE PUBLICATION dbz_publication FOR ALL TABLES;"
+      shell: oc exec {{ pod_list | json_query('resources[0].metadata.name') }} -n {{ project }} -- /usr/bin/psql {{ postgresql_user }} -c "DROP PUBLICATION IF EXISTS dbz_publication cascade; CREATE PUBLICATION dbz_publication FOR ALL TABLES;"
       when: cdc|bool == true
 
     - name: Change WAL level

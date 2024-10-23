@@ -9,42 +9,33 @@
     registry_password: "mypassword"
   tasks:
 
-    - name: Create {{ project }} Namespace
-      kubernetes.core.k8s:
-        state: present
-        definition:
-          apiVersion: v1
-          kind: Namespace
-          metadata:
-            name: "{{ project }}"
-            labels:
-             app: "{{ project }}"
+    # - name: Link builder secret
+    #   ansible.builtin.command: oc secrets link builder {{ registry_name }} -n {{ project }}
 
-    - name: Create Registry {{ registry_name }} Secret
-      kubernetes.core.k8s:
-        state: present
-        template: secret.j2
-
-    # - name: Read secret
-    #   kubernetes.core.k8s_info:
-    #     kind: ServiceAccount
-    #     name: default
-    #     namespace: "{{ project }}"
-    #   register: default_service_account
-
-    # - name: Link default secret
-    #   ansible.builtin.command: oc secrets link default {{ registry_name }} --for=pull -n {{ project }}
-
-    - name: Link default secret
+    - name: Link builder secret
       kubernetes.core.k8s_json_patch:
         kind: ServiceAccount
         namespace: "{{ project }}"
-        name: default
+        name: builder
         patch:
           - op: add
-            path: /imagePullSecrets
+            path: /secrets
             value:
               - name: "{{ registry_name }}"
+
+    - name: Create OperatorGroup
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: operators.coreos.com/v1
+          kind: OperatorGroup
+          metadata:
+            name: "{{ project }}"
+            namespace: "{{ project }}"
+          spec:
+            targetNamespaces:
+              - "{{ project }}"
+            upgradeStrategy: Default
 
 # Grant view role permission to a user
 # oc adm policy add-role-to-user view <user> -n <project>

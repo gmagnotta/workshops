@@ -150,7 +150,7 @@
                             key: postgresql-shared-buffers
                     readinessProbe:
                       timeoutSeconds: 10
-                      initialDelaySeconds: 90
+                      initialDelaySeconds: 30
                       successThreshold: 1
                       failureThreshold: 3
                       exec:
