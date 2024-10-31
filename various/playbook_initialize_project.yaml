@@ -7,6 +7,8 @@
     registry_hostname: "registry.redhat.io"
     registry_username: "myuser"
     registry_password: "mypassword"
+    create_builder_secret: false
+    create_operator_group: false
   tasks:
 
     - name: Create {{ project }} Namespace
@@ -25,12 +27,13 @@
         state: present
         template: secret.j2
 
-    # - name: Read secret
-    #   kubernetes.core.k8s_info:
-    #     kind: ServiceAccount
-    #     name: default
-    #     namespace: "{{ project }}"
-    #   register: default_service_account
+    - name: Read default ServiceAccount
+      kubernetes.core.k8s_info:
+        kind: ServiceAccount
+        name: default
+        namespace: "{{ project }}"
+      register: default_service_account
+      changed_when: false
 
     # - name: Link default secret
     #   ansible.builtin.command: oc secrets link default {{ registry_name }} --for=pull -n {{ project }}
@@ -45,6 +48,46 @@
             path: /imagePullSecrets
             value:
               - name: "{{ registry_name }}"
+      when:
+        - default_service_account.resources[0] is not search(registry_name)
+
+    - name: Read builder ServiceAccount
+      kubernetes.core.k8s_info:
+        kind: ServiceAccount
+        name: builder
+        namespace: "{{ project }}"
+      register: builder_service_account
+      changed_when: false
+      when: create_builder_secret
+
+    - name: Link builder secret
+      kubernetes.core.k8s_json_patch:
+        kind: ServiceAccount
+        namespace: "{{ project }}"
+        name: builder
+        patch:
+          - op: add
+            path: /secrets
+            value:
+              - name: "{{ registry_name }}"
+      when: 
+        - create_builder_secret
+        - builder_service_account.resources[0] is not search(registry_name)
+
+    - name: Create OperatorGroup
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: operators.coreos.com/v1
+          kind: OperatorGroup
+          metadata:
+            name: "{{ project }}"
+            namespace: "{{ project }}"
+          spec:
+            targetNamespaces:
+              - "{{ project }}"
+            upgradeStrategy: Default
+      when: create_operator_group
 
 # Grant view role permission to a user
 # oc adm policy add-role-to-user view <user> -n <project>

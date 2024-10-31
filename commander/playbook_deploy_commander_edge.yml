@@ -8,7 +8,7 @@
 - name: Deploy commander cache application
   hosts: localhost
   vars:
-    project: commander-cache
+    project: commander
   tasks:
     - name: Deploy resources
       ansible.builtin.shell: oc apply -n {{ project }} -k /home/gmagnott/src/examples/commander-cache/src/main/k8s/overlays/prod/
@@ -18,4 +18,4 @@
   vars:
     sink: http://commander-cache:8080
     schema_whitelist: Battalion,Member,Equipment
-    slot_name: west
+    slot_name: edge

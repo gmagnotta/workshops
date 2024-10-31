@@ -1,0 +1,21 @@
+---
+# Required variables
+# project, registry_username, registry_password, postgresql_database, postgresql_user, postgresql_password
+
+- name: Create Project
+  ansible.builtin.import_playbook: ../various/playbook_initialize_project.yaml
+
+- name: Deploy commander cache application
+  hosts: localhost
+  vars:
+    project: commander
+  tasks:
+    - name: Deploy resources
+      ansible.builtin.shell: oc apply -n {{ project }} -k /home/gmagnott/src/examples/commander-cache/src/main/k8s/overlays/prod/
+
+- name: Provision Debezium Server
+  ansible.builtin.import_playbook: ../change-data-capture/debeziumserver/playbook_provision_debezium.yaml
+  vars:
+    sink: http://commander-cache:8080
+    schema_whitelist: Battalion,Member,Equipment
+    slot_name: west

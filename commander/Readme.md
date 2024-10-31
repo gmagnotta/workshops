@@ -85,7 +85,7 @@ Enter this directory
 cd workshops/commander
 ```
 
-Provision the commander-cache project via ansible
+Provision the commander project via ansible
 
 ```
 ansible-playbook -e project="commander" \
@@ -93,10 +93,10 @@ ansible-playbook -e project="commander" \
  -e registry_password="$REGISTRY_PASSWORD" \
  -e postgresql_database="commander" \
  -e postgresql_user="commander" \
- -e postgresql_password="commander" playbook_deploy_commander_cache.yml
+ -e postgresql_password="commander" playbook_deploy_commander_remote.yml
 ```
 
-Wait until commander-cache is provisioned
+Wait until commander is provisioned
 
 ## Show commander-cache API
 
@@ -134,6 +134,10 @@ curl -v --header "Content-Type: application/json" \
 ```
 
 As soon as debezium intercept the transaction, the data is streamed to commander-cache
+
+## Edge device
+
+You can perform the same demo also on an edge device running microshift. Just use the playbook_deploy_commander_edge.yml playbook.
 
 ## Demo completed
 
