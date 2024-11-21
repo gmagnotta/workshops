@@ -4,29 +4,27 @@
 
 ## Download openshift-intaller binary
 
-Download openshift installer from https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/latest/openshift-install-linux.tar.gz and extract its content. Copy the openshift-install binary to a location that can be referenced later.
+Download openshift installer from `https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/latest/openshift-install-linux.tar.gz` and extract its content. Copy the openshift-install binary to a location that can be referenced later.
 
 ## Create installation directory
 
-Create a directory that will store the artifacts from the installation:
-
-`mkdir ~/myinstall`
+Create a directory that will store the artifacts from the installation: `mkdir ~/myinstall`
 
 ## Prepare authentication files
 
-If using aws, create the file ~/.aws/credentials with the following content:
+If using aws, create the file `~/.aws/credentials` with the following content:
 
-`
+```
 [default]
 aws_access_key_id = <youraccesskeyid> 
 aws_secret_access_key = <yoursecretaccesskey>
-`
+```
 
-If using azure, create the file ~/.azure/osServicePrincipal.json with the following content:
+If using azure, create the file `~/.azure/osServicePrincipal.json` with the following content:
 
-`
+```
 {"subscriptionId":"<yoursubscriptionid>","clientId":"<yourclientid>","clientSecret":"<yourclientsecret>","tenantId":"<yourtenantid>"}
-`
+```
 
 ## Customize the install-config.yaml
 
@@ -36,17 +34,8 @@ Remember to change the values in '<>'
 
 ## Run the installation
 
-Use openshift-install binary to create the cluster:
-
-`
-openshift-install create cluster --dir <directory> --log-level=info
-`
+Use openshift-install binary to create the cluster: `openshift-install create cluster --dir <directory> --log-level=info`
 
 ## Delete the cluster
 
-In case you want to delete the cluster you can use openshift-install binary and the directory containing installation artifacts:
-
-`
-openshift-install destroy cluster --dir <directory> --log-level=info
-
-`
+In case you want to delete the cluster you can use openshift-install binary and the directory containing installation artifacts: `openshift-install destroy cluster --dir <directory> --log-level=info`
