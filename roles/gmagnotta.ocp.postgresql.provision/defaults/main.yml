@@ -1,0 +1,8 @@
+---
+project: "myproject"
+application_name: "postgresql"
+volume_capacity: "1Gi"
+postgresql_database: "dbuser"
+postgresql_user: "dbuser"
+postgresql_password: "dbpassword"
+use_imagestream: true

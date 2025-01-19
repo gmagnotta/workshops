@@ -1,0 +1,51 @@
+---
+- name: Search for postgresql pod
+  kubernetes.core.k8s_info:
+    kind: Pod
+    namespace: "{{ project }}"
+    label_selectors:
+      - "app = {{ application_name }}"
+  register: pod_list
+  until: pod_list|json_query('resources[*].status.phase')|unique == ["Running"]
+  retries: 10
+  delay: 10
+
+- name: Enable Replication
+  kubernetes.core.k8s_exec:
+    namespace: "{{ project }}"
+    pod: "{{ pod_list | json_query('resources[0].metadata.name') }}"
+    command: "/usr/bin/psql postgres -c 'ALTER USER {{ postgresql_user }} REPLICATION;'"
+
+- name: Enable Publication
+  kubernetes.core.k8s_exec:
+    namespace: "{{ project }}"
+    pod: "{{ pod_list | json_query('resources[0].metadata.name') }}"
+    command: "/usr/bin/psql postgres -c 'DROP PUBLICATION IF EXISTS dbz_publication cascade; CREATE PUBLICATION dbz_publication FOR ALL TABLES;'"
+
+- name: Change WAL level
+  kubernetes.core.k8s_exec:
+    namespace: "{{ project }}"
+    pod: "{{ pod_list | json_query('resources[0].metadata.name') }}"
+    command: "sed -i 's/#wal_level = replica/wal_level = logical/g' /var/lib/pgsql/data/userdata/postgresql.conf"
+
+- name: Change WAL level
+  kubernetes.core.k8s_exec:
+    namespace: "{{ project }}"
+    pod: "{{ pod_list | json_query('resources[0].metadata.name') }}"
+    command: "sed -i 's/#max_wal_senders = 10/max_wal_senders = 4/g' /var/lib/pgsql/data/userdata/postgresql.conf"
+
+- name: Change WAL level
+  kubernetes.core.k8s_exec:
+    namespace: "{{ project }}"
+    pod: "{{ pod_list | json_query('resources[0].metadata.name') }}"
+    command: "sed -i 's/#max_replication_slots = 10/max_replication_slots = 4/g' /var/lib/pgsql/data/userdata/postgresql.conf"
+
+- name: Delete Pod
+  kubernetes.core.k8s:
+    state: absent
+    definition:
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        namespace: "{{ project }}"
+        name: "{{ pod_list.resources[0].metadata.name }}"
