@@ -59,8 +59,8 @@
     - variables_remote.yml
   tasks:
 
-    - name: skupper init
+    - name: skupper init in namespace {{ project }}
       ansible.builtin.command: skupper init -n {{ project }}
 
-    - name: skupper generate token
+    - name: skupper link create in namespace {{ project }}
       ansible.builtin.command: skupper link create -n {{ project }} secret.token

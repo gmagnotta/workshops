@@ -51,3 +51,16 @@
     - variables_edge.yml
   roles:
     - gmagnotta.ocp.debeziumserver
+
+- name: Initialize skupper
+  hosts: localhost
+  vars_files:
+    - variables.yml
+    - variables_edge.yml
+  tasks:
+
+    - name: skupper init in namespace {{ project }}
+      ansible.builtin.command: skupper init -n {{ project }}
+
+    - name: skupper link create in namespace {{ project }}
+      ansible.builtin.command: skupper link create -n {{ project }} secret.token

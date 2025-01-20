@@ -62,7 +62,8 @@ curl -v --header "Content-Type: application/json" \
 
 ## Create the service network
 
-Install the Red Hat Service Interconnect router
+Service Interconnect is installed automatically by the playbook. In case you need to manage
+it manually:
 
 ```
 skupper init -n commander
@@ -104,7 +105,8 @@ You can inspect the api /member, /equipment and /battalion to show that there is
 
 ## Create the service network
 
-Install the Red Hat Service Interconnect router
+Service Interconnect is installed automatically by the playbook. In case you need to manage
+it manually:
 
 ```
 skupper init -n commander

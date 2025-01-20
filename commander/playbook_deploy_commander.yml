@@ -82,7 +82,7 @@
     - variables.yml
   tasks:
 
-    - name: skupper init
+    - name: skupper init in namespace {{ project }}
       ansible.builtin.command: skupper init -n {{ project }}
 
     - name: skupper generate token
