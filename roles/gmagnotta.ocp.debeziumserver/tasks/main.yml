@@ -4,7 +4,7 @@
     debezium_image: debezium:2.7
   when: use_imagestream
 
-- name: Define container image for postgresql
+- name: Define container image for debeziumserver
   ansible.builtin.set_fact:
     debezium_image: docker.io/debezium/server@sha256:f9cec4893e40f66de78d582821d67b2616957ac56aa2af46657b1f605e80f763
   when: not use_imagestream
