@@ -4,11 +4,45 @@
 #
 # see https://github.com/strimzi/strimzi-kafka-operator/blob/main/examples/security/tls-auth/connect.yaml
 #
+- name: OCP Login
+  hosts: localhost
+  vars_files:
+    - variables.yml
+  tasks:
+    - name: Check ocp credential exists
+      ansible.builtin.assert:
+        that:
+          - ocp_url is defined
+          - ocp_url != ""
+          - ocp_username is defined
+          - ocp_username != ""
+          - ocp_password is defined
+          - ocp_password != ""
+        fail_msg: "ocp credentials not valid, export the correct values"
+    
+    - name: login to openshift
+      ansible.builtin.command: oc login {{ ocp_url }} -u {{ ocp_username }} -p {{ ocp_password }} --insecure-skip-tls-verify=true
+      register: ocp_login_result
+      changed_when: false
+
+    - name: Check if oc login succeeded
+      ansible.builtin.fail:
+        msg: "oc login failed!"
+      when: ocp_login_result.rc != 0
+
+- name: Create Project
+  hosts: localhost
+  vars_files:
+    - variables.yml
+  vars:
+    create_operator_group: true
+  roles:
+    - gmagnotta.ocp.project
+
 - name: Deploy kafka in OpenShift cluster
   hosts: localhost
-  vars:
-    project: "kafka"
-    cluster_name: "my-cluster"
+  vars_files:
+    - variables.yml
   tasks:
 
     - name: Create Subscription
@@ -23,15 +57,26 @@
           spec:
             channel: stable
             name: amq-streams
-            installPlanApproval: Automatic
+            installPlanApproval: Manual
             source: redhat-operators
             sourceNamespace: openshift-marketplace
             startingCSV: amqstreams.v2.6.0-1
+        wait: true
+        wait_condition: 
+          reason: AllCatalogSourcesHealthy
+          status: false
+          type: CatalogSourcesUnhealthy
+        wait_timeout: 300
 
-    - name: Wait for Operator Installation
-      ansible.builtin.pause:
-        minutes: 5
-        prompt: "check that operator is installed"
+    - name: Search for cluster operator pod
+      kubernetes.core.k8s_info:
+        kind: Pod
+        namespace: "{{ project }}"
+        label_selectors:
+          - "name=amq-streams-cluster-operator"
+        wait: yes
+        wait_sleep: 10
+        wait_timeout: 360
 
     - name: Create Kafka Cluster
       kubernetes.core.k8s:
@@ -96,7 +141,7 @@
     #         topicName: topic-name-1
 
     - name: Extract the cluster CA certificate
-      shell: oc get secret "{{ cluster_name }}"-cluster-ca-cert -n "{{ project }}" -o jsonpath='{.data.ca\.p12}' | base64 -d > /tmp/ca.p12
+      shell: oc get secret "{{ cluster_name }}"-cluster-ca-cert -n "{{ project }}" -o jsonpath='{.data.ca\.p12}' | base64 -d > ca.p12
 
     - name: Extract the cluster CA password
-      shell: oc get secret "{{ cluster_name }}"-cluster-ca-cert -n "{{ project }}" -o jsonpath='{.data.ca\.password}' | base64 -d > /tmp/ca.password
+      shell: oc get secret "{{ cluster_name }}"-cluster-ca-cert -n "{{ project }}" -o jsonpath='{.data.ca\.password}' | base64 -d > ca.password

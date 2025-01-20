@@ -1,0 +1,5 @@
+project: "{{ lookup('env', 'PROJECT') }}"
+ocp_url: "{{ lookup('env', 'OCP_URL') }}"
+ocp_username: "{{ lookup('env', 'OCP_USERNAME') }}"
+ocp_password: "{{ lookup('env', 'OCP_PASSWORD') }}"
+cluster_name: "my-cluster"
