@@ -1,0 +1,11 @@
+---
+project: "myproject"
+application_name: "debezium"
+volume_capacity: "1Gi"
+postgresql_database: "dbuser"
+postgresql_user: "dbuser"
+postgresql_password: "dbpassword"
+use_imagestream: false
+schema_whitelist: "table"
+sink: "http://mysink:8080"
+slot_name: "debezium0"
