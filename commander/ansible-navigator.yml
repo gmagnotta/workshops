@@ -1,7 +1,8 @@
 ---
 ansible-navigator:
   execution-environment:
-    image: registry.redhat.io/ansible-automation-platform-25/ee-supported-rhel8
+    #image: registry.redhat.io/ansible-automation-platform-25/ee-supported-rhel8
+    image: localhost/mytest
     pull:
       policy: missing
   playbook-artifact:

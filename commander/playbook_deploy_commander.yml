@@ -76,4 +76,17 @@
         definition: "{{ lookup('kubernetes.core.kustomize', dir='files/k8s/commander/overlays/prod/') }}"
       register: oc_apply_result
 
+- name: Initialize skupper
+  hosts: localhost
+  vars_files:
+    - variables.yml
+  tasks:
 
+    - name: skupper init
+      ansible.builtin.command: skupper init -n {{ project }}
+
+    - name: skupper generate token
+      ansible.builtin.command: skupper token create -n {{ project }} secret.token
+
+    - name: skupper expose postgresql
+      ansible.builtin.command: skupper expose deployment/postgresql --port 5432 -n {{ project }}

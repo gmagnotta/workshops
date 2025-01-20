@@ -4,6 +4,12 @@ Example workshop to show data streaming using service interconnect
 
 ## Prerequirements
 
+Install the list of dependencies:
+
+```
+ansible-galaxy collection install -r collections/requirements.yml -p collections --force
+```
+
 Set these environment variables:
 
 ```
