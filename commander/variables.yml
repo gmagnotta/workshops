@@ -1,0 +1,12 @@
+project: "{{ lookup('env', 'PROJECT') }}"
+registry_username: "{{ lookup('env', 'REGISTRY_USERNAME') }}"
+registry_password: "{{ lookup('env', 'REGISTRY_PASSWORD') }}"
+postgresql_database: commander
+postgresql_user: commander
+postgresql_password: commander
+ocp_url: "{{ lookup('env', 'OCP_URL') }}"
+ocp_username: "{{ lookup('env', 'OCP_USERNAME') }}"
+ocp_password: "{{ lookup('env', 'OCP_PASSWORD') }}"
+sink: http://commander-cache:8080
+schema_whitelist: Battalion,Member,Equipment
+slot_name: west

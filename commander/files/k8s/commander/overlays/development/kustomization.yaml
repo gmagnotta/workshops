@@ -1,0 +1,7 @@
+resources:
+- ../../base
+- is.yaml
+
+patches:
+- deployment.yaml
+- configmap.yaml

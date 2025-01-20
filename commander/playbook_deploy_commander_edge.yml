@@ -1,21 +1,53 @@
 ---
-# Required variables
-# project, registry_username, registry_password, postgresql_database, postgresql_user, postgresql_password
+- name: OCP Login
+  hosts: localhost
+  vars_files:
+    - variables.yml
+  tasks:
+    - name: Check ocp credential exists
+      ansible.builtin.assert:
+        that:
+          - ocp_url is defined
+          - ocp_url != ""
+          - ocp_username is defined
+          - ocp_username != ""
+          - ocp_password is defined
+          - ocp_password != ""
+        fail_msg: "ocp credentials not valid, export the correct values"
+    
+    - name: login to openshift
+      ansible.builtin.command: oc login {{ ocp_url }} -u {{ ocp_username }} -p {{ ocp_password }} --insecure-skip-tls-verify=true
+      register: ocp_login_result
+      changed_when: false
+
+    - name: Check if oc login succeeded
+      ansible.builtin.fail:
+        msg: "oc login failed!"
+      when: ocp_login_result.rc != 0
 
 - name: Create Project
-  ansible.builtin.import_playbook: ../various/playbook_initialize_project.yaml
+  hosts: localhost
+  vars_files:
+    - variables.yml
+  roles:
+    - gmagnotta.ocp.project
 
 - name: Deploy commander cache application
   hosts: localhost
-  vars:
-    project: commander
+  vars_files:
+    - variables.yml
   tasks:
+
     - name: Deploy resources
-      ansible.builtin.shell: oc apply -n {{ project }} -k /home/gmagnott/src/examples/commander-cache/src/main/k8s/overlays/prod/
+      kubernetes.core.k8s:
+        namespace: "{{ project }}"
+        definition: "{{ lookup('kubernetes.core.kustomize', dir='files/k8s/commander-cache/overlays/prod/') }}"
+      register: oc_apply_result
 
 - name: Provision Debezium Server
-  ansible.builtin.import_playbook: ../change-data-capture/debeziumserver/playbook_provision_debezium.yaml
-  vars:
-    sink: http://commander-cache:8080
-    schema_whitelist: Battalion,Member,Equipment
-    slot_name: edge
+  hosts: localhost
+  vars_files:
+    - variables.yml
+    - variables_edge.yml
+  roles:
+    - gmagnotta.ocp.debeziumserver

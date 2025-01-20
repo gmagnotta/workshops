@@ -1,31 +1,79 @@
 ---
-# Required variables
-# project, registry_username, registry_password, postgresql_database, postgresql_user, postgresql_password, 
+- name: OCP Login
+  hosts: localhost
+  vars_files:
+    - variables.yml
+  tasks:
+    - name: Check ocp credential exists
+      ansible.builtin.assert:
+        that:
+          - ocp_url is defined
+          - ocp_url != ""
+          - ocp_username is defined
+          - ocp_username != ""
+          - ocp_password is defined
+          - ocp_password != ""
+        fail_msg: "ocp credentials not valid, export the correct values"
+    
+    - name: login to openshift
+      ansible.builtin.command: oc login {{ ocp_url }} -u {{ ocp_username }} -p {{ ocp_password }} --insecure-skip-tls-verify=true
+      register: ocp_login_result
+      changed_when: false
+
+    - name: Check if oc login succeeded
+      ansible.builtin.fail:
+        msg: "oc login failed!"
+      when: ocp_login_result.rc != 0
 
 - name: Create Project
-  ansible.builtin.import_playbook: ../various/playbook_initialize_project.yaml
+  hosts: localhost
+  vars_files:
+    - variables.yml
+  roles:
+    - gmagnotta.ocp.project
 
 - name: Provision Postgresql
-  ansible.builtin.import_playbook: ../various/playbook_provision_postgresql.yaml
+  hosts: localhost
+  vars_files:
+    - variables.yml
+  roles:
+    - gmagnotta.ocp.postgresql.provision
 
-- name: Setup schema
-  ansible.builtin.import_playbook: ../various/playbook_run_sql_postgresql.yaml
+- name: Setup Schema Postgresql
+  hosts: localhost
+  vars_files:
+    - variables.yml
   vars:
-    postgresql_file: ../commander/files/schema.sql
+    postgresql_file: files/schema.sql
+  roles:
+    - gmagnotta.ocp.postgresql.runsql
 
-- name: Load data
-  ansible.builtin.import_playbook: ../various/playbook_run_sql_postgresql.yaml
+- name: Load data into Postgresql
+  hosts: localhost
+  vars_files:
+    - variables.yml
   vars:
-    postgresql_file: ../commander/files/import.sql
+    postgresql_file: files/import.sql
+  roles:
+    - gmagnotta.ocp.postgresql.runsql
 
-- name: Enable publication
-  ansible.builtin.import_playbook: ../various/playbook_enable_publication_postgresql.yaml
+- name: Configure postgresql for CDC
+  hosts: localhost
+  vars_files:
+    - variables.yml
+  roles:
+    - gmagnotta.ocp.postgresql.enablepublication
 
 - name: Deploy commander application
   hosts: localhost
-  vars:
-    project: commander
+  vars_files:
+    - variables.yml
   tasks:
+
     - name: Deploy resources
-      ansible.builtin.shell: oc apply -n {{ project }} -k /home/gmagnott/src/examples/commander/src/main/k8s/overlays/prod/
+      kubernetes.core.k8s:
+        namespace: "{{ project }}"
+        definition: "{{ lookup('kubernetes.core.kustomize', dir='files/k8s/commander/overlays/prod/') }}"
+      register: oc_apply_result
+
 

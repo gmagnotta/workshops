@@ -4,20 +4,19 @@ Example workshop to show data streaming using service interconnect
 
 ## Prerequirements
 
-Set environment variables REGISTRY_USERNAME and REGISTRY_PASSWORD if you need to access registry.redhat.io
+Set these environment variables:
 
 ```
-export REGISTRY_USERNAME="myusername"
+export REGISTRY_USERNAME="myusername" # for registry.redhat.io
 export REGISTRY_PASSWORD="mypassword"
+export OCP_URL="https://api.mycluster.openshiftapps.com:6443"
+export OCP_USERNAME="myocpuser"
+export OCP_PASSWORD="myocppassword"
 ```
+
+Copy the roles in the roles/ directory.
 
 ## Start with the Core OpenShift
-
-Login to core OCP
-
-```
-oc login --token=sha256~12345 --server=https://api.coreocp.com:6443
-```
 
 Enter this directory
 
@@ -25,19 +24,19 @@ Enter this directory
 cd workshops/commander
 ```
 
-Provision the commander project via ansible
+Provision the commander project via ansible navigator
 
 ```
-ansible-playbook -e project="commander" \
- -e registry_username="$REGISTRY_USERNAME" \
- -e registry_password="$REGISTRY_PASSWORD" \
- -e postgresql_database="commander" \
- -e postgresql_user="commander" \
- -e postgresql_password="commander" playbook_deploy_commander.yml
+ansible-navigator run --senv PROJECT="commander" \
+ --senv REGISTRY_USERNAME="$REGISTRY_USERNAME" \
+ --senv REGISTRY_PASSWORD="$REGISTRY_PASSWORD" \
+ --senv OCP_URL="$OCP_URL" \
+ --senv OCP_USERNAME="$OCP_USERNAME" \
+ --senv OCP_PASSWORD="$OCP_PASSWORD" \
+ -m stdout playbook_deploy_commander.yml
 ```
 
-Wait until postgresql database is provisioned and loaded with content and
-commander application is provisioned
+Wait until everything is deployed.
 
 ## Show commander API
 
@@ -73,12 +72,6 @@ skupper expose deployment/postgresql --port 5432 -n commander
 
 ## Switch to remote OpenShift
 
-Login to remote OCP
-
-```
-oc login --token=sha256~12345 --server=https://app.remoteocp.com:6443
-```
-
 Enter this directory
 
 ```
@@ -88,12 +81,13 @@ cd workshops/commander
 Provision the commander project via ansible
 
 ```
-ansible-playbook -e project="commander" \
- -e registry_username="$REGISTRY_USERNAME" \
- -e registry_password="$REGISTRY_PASSWORD" \
- -e postgresql_database="commander" \
- -e postgresql_user="commander" \
- -e postgresql_password="commander" playbook_deploy_commander_remote.yml
+ansible-navigator run --senv PROJECT="commander-cache" \
+ --senv REGISTRY_USERNAME="$REGISTRY_USERNAME" \
+ --senv REGISTRY_PASSWORD="$REGISTRY_PASSWORD" \
+ --senv OCP_URL="$OCP_URL" \
+ --senv OCP_USERNAME="$OCP_USERNAME" \
+ --senv OCP_PASSWORD="$OCP_PASSWORD" \
+ -m stdout playbook_deploy_commander_remote.yml
 ```
 
 Wait until commander is provisioned
