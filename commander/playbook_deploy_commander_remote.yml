@@ -59,6 +59,10 @@
     - variables_remote.yml
   tasks:
 
+    - name: Wait for user confirmation
+      ansible.builtin.pause:
+        prompt: "Press ENTER to continue"
+
     - name: skupper init in namespace {{ project }}
       ansible.builtin.command: skupper init -n {{ project }}
 
