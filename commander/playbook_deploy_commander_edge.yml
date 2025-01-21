@@ -1,29 +1,19 @@
 ---
-- name: OCP Login
+- name: Setup kubeconfig
   hosts: localhost
-  vars_files:
-    - variables.yml
   tasks:
-    - name: Check ocp credential exists
-      ansible.builtin.assert:
-        that:
-          - ocp_url is defined
-          - ocp_url != ""
-          - ocp_username is defined
-          - ocp_username != ""
-          - ocp_password is defined
-          - ocp_password != ""
-        fail_msg: "ocp credentials not valid, export the correct values"
-    
-    - name: login to openshift
-      ansible.builtin.command: oc login {{ ocp_url }} -u {{ ocp_username }} -p {{ ocp_password }} --insecure-skip-tls-verify=true
-      register: ocp_login_result
-      changed_when: false
 
-    - name: Check if oc login succeeded
-      ansible.builtin.fail:
-        msg: "oc login failed!"
-      when: ocp_login_result.rc != 0
+    - name: Create ~/.kube
+      ansible.builtin.file:
+        path: ~/.kube
+        state: directory
+        mode: '0700'
+
+    - name: copy config
+      ansible.builtin.copy:
+        src: kubeconfig
+        dest: ~/.kube/config
+        mode: '0644'
 
 - name: Create Project
   hosts: localhost
