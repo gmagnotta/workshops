@@ -16,6 +16,14 @@
   loop_control:
     label: "{{ item.name }}"
 
+- name: Check project value
+  ansible.builtin.assert:
+    that:
+      - project is defined
+      - project != ""
+    fail_msg: "project not valid"
+    quiet: true
+
 - name: Create {{ project }} Namespace
   kubernetes.core.k8s:
     state: present
