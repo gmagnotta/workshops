@@ -1,6 +1,9 @@
 project: "{{ lookup('env', 'PROJECT') }}"
-registry_username: "{{ lookup('env', 'REGISTRY_USERNAME') }}"
-registry_password: "{{ lookup('env', 'REGISTRY_PASSWORD') }}"
+registries:
+  - name: redhatio
+    hostname: registry.redhat.io
+    username: "{{ lookup('env', 'REGISTRY_USERNAME') }}"
+    password: "{{ lookup('env', 'REGISTRY_PASSWORD') }}"
 postgresql_database: commander
 postgresql_user: commander
 postgresql_password: commander
