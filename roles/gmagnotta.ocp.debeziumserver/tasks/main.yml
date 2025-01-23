@@ -24,6 +24,7 @@
         resources:
           requests:
             storage: "{{ volume_capacity }}"
+  when: persistent
 
 - name: Create ConfigMap
   kubernetes.core.k8s:
@@ -53,7 +54,7 @@
               type: Local
   when: use_imagestream
 
-- name: Create Deployment
+- name: Create Persistent Deployment
   kubernetes.core.k8s:
     state: present
     definition:
@@ -101,3 +102,49 @@
           type: Recreate
         revisionHistoryLimit: 10
         progressDeadlineSeconds: 600
+  when: persistent
+
+- name: Create Stateless Deployment
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: "{{ application_name }}"
+        namespace: "{{ project }}"
+        labels:
+          app: "{{ application_name }}"
+      spec:
+        replicas: 1
+        selector:
+          matchLabels:
+            app: "{{ application_name }}"
+        template:
+          metadata:
+            labels:
+              app: "{{ application_name }}"
+            annotations:
+              alpha.image.policy.openshift.io/resolve-names: '*'
+          spec:
+            volumes:
+              - name: applicationproperties
+                configMap:
+                  name: application.properties
+                  items:
+                  - key: "application.properties"
+                    path: application.properties
+            containers:
+              - name: debezium
+                image: "{{ debezium_image }}"
+                volumeMounts:
+                  - mountPath: /debezium/conf
+                    name: applicationproperties
+                    readOnly: true
+                resources: {}
+                imagePullPolicy: IfNotPresent
+        strategy:
+          type: Recreate
+        revisionHistoryLimit: 10
+        progressDeadlineSeconds: 600
+  when: not persistent
