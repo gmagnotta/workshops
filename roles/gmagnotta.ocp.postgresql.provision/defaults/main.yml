@@ -6,3 +6,4 @@ postgresql_database: "dbuser"
 postgresql_user: "dbuser"
 postgresql_password: "dbpassword"
 use_imagestream: false
+persistent: true

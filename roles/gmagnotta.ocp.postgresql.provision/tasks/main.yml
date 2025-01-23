@@ -24,6 +24,7 @@
         resources:
           requests:
             storage: "{{ volume_capacity }}"
+  when: persistent
 
 - name: Create ConfigMap
   kubernetes.core.k8s:
@@ -76,7 +77,7 @@
               type: Local
   when: use_imagestream
 
-- name: Create Deployment
+- name: Create Persistent Deployment
   kubernetes.core.k8s:
     state: present
     definition:
@@ -167,6 +168,93 @@
           type: Recreate
         revisionHistoryLimit: 10
         progressDeadlineSeconds: 600
+  when: persistent
+
+- name: Create Stateless Deployment
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: "{{ application_name }}"
+        namespace: "{{ project }}"
+        labels:
+          app: "{{ application_name }}"
+      spec:
+        replicas: 1
+        selector:
+          matchLabels:
+            app: "{{ application_name }}"
+        template:
+          metadata:
+            labels:
+              app: "{{ application_name }}"
+            annotations:
+              alpha.image.policy.openshift.io/resolve-names: '*'
+          spec:
+            containers:
+              - name: postgresql
+                image: "{{ postgresql_image }}"
+                ports:
+                  - containerPort: 5432
+                    protocol: TCP
+                env:
+                  - name: POSTGRESQL_USER
+                    valueFrom:
+                      secretKeyRef:
+                        name: "{{ application_name }}"
+                        key: postgresql-user
+                  - name: POSTGRESQL_PASSWORD
+                    valueFrom:
+                      secretKeyRef:
+                        name: "{{ application_name }}"
+                        key: postgresql-password
+                  - name: POSTGRESQL_DATABASE
+                    valueFrom:
+                      secretKeyRef:
+                        name: "{{ application_name }}"
+                        key: postgresql-database
+                  - name: POSTGRESQL_MAX_CONNECTIONS
+                    valueFrom:
+                      configMapKeyRef:
+                        name: "{{ application_name }}"
+                        key: postgresql-max-connections
+                  - name: POSTGRESQL_MAX_PREPARED_TRANSACTIONS
+                    valueFrom:
+                      configMapKeyRef:
+                        name: "{{ application_name }}"
+                        key: postgresql-max-prepared-transactions
+                  - name: POSTGRESQL_SHARED_BUFFERS
+                    valueFrom:
+                      configMapKeyRef:
+                        name: "{{ application_name }}"
+                        key: postgresql-shared-buffers
+                readinessProbe:
+                  timeoutSeconds: 10
+                  initialDelaySeconds: 30
+                  successThreshold: 1
+                  failureThreshold: 3
+                  exec:
+                    command:
+                    - "/bin/sh"
+                    - "-i"
+                    - "-c"
+                    - psql -h 127.0.0.1 -U $PGUSER -q -d $PGUSER -c 'SELECT 1'
+                livenessProbe:
+                  timeoutSeconds: 10
+                  initialDelaySeconds: 90
+                  successThreshold: 1
+                  failureThreshold: 3
+                  tcpSocket:
+                    port: 5432
+                resources: {}
+                imagePullPolicy: IfNotPresent
+        strategy:
+          type: Recreate
+        revisionHistoryLimit: 10
+        progressDeadlineSeconds: 600
+  when: not persistent
 
 - name: Create Service
   kubernetes.core.k8s:
