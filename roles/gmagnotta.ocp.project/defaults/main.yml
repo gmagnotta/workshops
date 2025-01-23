@@ -1,8 +1,5 @@
 ---
 project: "myproject"
-registry_name: "registryredhatio"
-registry_hostname: "registry.redhat.io"
-registry_username: "myuser"
-registry_password: "mypassword"
+registries: []
 create_builder_secret: false
 create_operator_group: false

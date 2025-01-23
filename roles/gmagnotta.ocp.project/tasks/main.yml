@@ -1,12 +1,20 @@
 ---
-- name: Check registry credential exists
+- name: Check registries values
   ansible.builtin.assert:
     that:
-      - registry_username is defined
-      - registry_username != ""
-      - registry_password is defined
-      - registry_password != ""
-    fail_msg: "registry credentials not valid, export the correct values"
+      - item['name'] is defined
+      - item['name'] != ""
+      - item['hostname'] is defined
+      - item['hostname'] != ""
+      - item['username'] is defined
+      - item['username'] != ""
+      - item['password'] is defined
+      - item['password'] != ""
+    fail_msg: "registries values not valid"
+    quiet: true
+  loop: "{{ registries }}"
+  loop_control:
+    label: "{{ item.name }}"
 
 - name: Create {{ project }} Namespace
   kubernetes.core.k8s:
@@ -19,10 +27,13 @@
         labels:
           app: "{{ project }}"
 
-- name: Create Registry {{ registry_name }} Secret
+- name: Create Registry {{ item['name'] }} Secret
   kubernetes.core.k8s:
     state: present
     template: secret.j2
+  loop: "{{ registries }}"
+  loop_control:
+    label: "{{ item.name }}"
 
 - name: Read default ServiceAccount
   kubernetes.core.k8s_info:
@@ -33,9 +44,12 @@
   changed_when: false
 
 - name: Link default secret
-  ansible.builtin.command: oc secrets link default {{ registry_name }} --for=pull -n {{ project }}
+  ansible.builtin.command: oc secrets link default {{ item['name'] }} --for=pull -n {{ project }}
   when:
-    - default_service_account.resources[0] is not search(registry_name)
+    - default_service_account.resources[0] is not search(item['name'])
+  loop: "{{ registries }}"
+  loop_control:
+    label: "{{ item.name }}"
 
 - name: Read builder ServiceAccount
   kubernetes.core.k8s_info:
@@ -47,10 +61,13 @@
   when: create_builder_secret
 
 - name: Link builder secret
-  ansible.builtin.command: oc secrets link builder {{ registry_name }} --for=pull,mount -n {{ project }}
+  ansible.builtin.command: oc secrets link builder {{ item['name'] }} --for=pull,mount -n {{ project }}
   when: 
     - create_builder_secret
-    - builder_service_account.resources[0] is not search(registry_name)
+    - builder_service_account.resources[0] is not search(item['name'])
+  loop: "{{ registries }}"
+  loop_control:
+    label: "{{ item.name }}"
 
 - name: Create OperatorGroup
   kubernetes.core.k8s:
