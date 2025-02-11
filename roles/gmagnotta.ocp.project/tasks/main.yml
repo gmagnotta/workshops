@@ -35,7 +35,7 @@
         labels:
           app: "{{ project }}"
 
-- name: Create Registry {{ item['name'] }} Secret
+- name: Create Registry Secrets
   kubernetes.core.k8s:
     state: present
     template: secret.j2

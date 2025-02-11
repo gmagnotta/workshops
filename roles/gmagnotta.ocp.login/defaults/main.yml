@@ -1,0 +1,6 @@
+---
+ocp:
+  url: ""
+  username: ""
+  password: ""
+skip_tls_verification: false

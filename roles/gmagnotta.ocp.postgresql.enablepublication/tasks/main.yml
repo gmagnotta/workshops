@@ -4,7 +4,7 @@
     kind: Pod
     namespace: "{{ project }}"
     label_selectors:
-      - "app = {{ application_name }}"
+      - "app = {{ postgresql_application_name }}"
   register: pod_list
   until: pod_list.resources[0].status.phase == "Running"
   retries: 10
@@ -18,13 +18,13 @@
   kubernetes.core.k8s_exec:
     namespace: "{{ project }}"
     pod: "{{ pod_list.resources[0].metadata.name }}"
-    command: "/usr/bin/psql postgres -c 'ALTER USER {{ postgresql_user }} REPLICATION;'"
+    command: "/usr/bin/psql postgres -c 'ALTER USER {{ postgresql.user }} REPLICATION;'"
 
 - name: Enable Publication
   kubernetes.core.k8s_exec:
     namespace: "{{ project }}"
     pod: "{{ pod_list.resources[0].metadata.name }}"
-    command: "/usr/bin/psql {{ postgresql_user }} -c 'DROP PUBLICATION IF EXISTS dbz_publication cascade; CREATE PUBLICATION dbz_publication FOR ALL TABLES;'"
+    command: "/usr/bin/psql {{ postgresql.user }} -c 'DROP PUBLICATION IF EXISTS dbz_publication cascade; CREATE PUBLICATION dbz_publication FOR ALL TABLES;'"
 
 - name: Change WAL level
   kubernetes.core.k8s_exec:

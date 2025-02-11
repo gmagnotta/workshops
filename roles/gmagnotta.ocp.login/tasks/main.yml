@@ -1,0 +1,22 @@
+---
+- name: Check Credentials values
+  ansible.builtin.assert:
+    that:
+      - ocp.url is defined
+      - ocp.url != ""
+      - ocp.username is defined
+      - ocp.username != ""
+      - ocp.password is defined
+      - ocp.password != ""
+    fail_msg: "Credentials not valid"
+    quiet: true
+
+- name: login to openshift
+  ansible.builtin.command: oc login {{ ocp.url }} -u {{ ocp.username }} -p {{ ocp.password }} --insecure-skip-tls-verify={{ skip_tls_verification | quote }}
+  register: ocp_login_result
+  changed_when: false
+
+- name: Check if oc login succeeded
+  ansible.builtin.fail:
+    msg: "oc login failed!"
+  when: ocp_login_result.rc != 0

@@ -1,10 +1,10 @@
 ---
 project: "myproject"
-application_name: "postgresql"
-volume_capacity: "1Gi"
+postgresql_application_name: "postgresql"
+postgresql_volume_capacity: "1Gi"
 postgresql:
-  - database: "dbuser"
-  - user: "dbuser"
-  - password: "dbpassword"
-use_imagestream: false
-persistent: true
+  database: "dbuser"
+  user: "dbuser"
+  password: "dbpassword"
+postgresql_use_imagestream: false
+postgresql_persistent: true
