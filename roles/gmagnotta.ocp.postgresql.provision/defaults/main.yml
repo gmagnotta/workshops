@@ -2,8 +2,9 @@
 project: "myproject"
 application_name: "postgresql"
 volume_capacity: "1Gi"
-postgresql_database: "dbuser"
-postgresql_user: "dbuser"
-postgresql_password: "dbpassword"
+postgresql:
+  - database: "dbuser"
+  - user: "dbuser"
+  - password: "dbpassword"
 use_imagestream: false
 persistent: true

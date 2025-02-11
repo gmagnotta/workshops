@@ -50,9 +50,9 @@
         name: "{{ application_name }}"
         namespace: "{{ project }}"
       data:
-        postgresql-database: "{{ postgresql_database | b64encode }}"
-        postgresql-user: "{{ postgresql_user | b64encode }}"
-        postgresql-password: "{{ postgresql_password  | b64encode}}"
+        postgresql-database: "{{ postgresql.database | b64encode }}"
+        postgresql-user: "{{ postgresql.user | b64encode }}"
+        postgresql-password: "{{ postgresql.password  | b64encode}}"
 
 - name: Create ImageStream
   kubernetes.core.k8s:
