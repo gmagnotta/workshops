@@ -24,7 +24,7 @@
         resources:
           requests:
             storage: "{{ volume_capacity }}"
-  when: persistent
+  when: debezium_persistent
 
 - name: Create ConfigMap
   kubernetes.core.k8s:
