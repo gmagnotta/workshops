@@ -1,15 +1,17 @@
-project: "{{ lookup('env', 'PROJECT') }}"
+project: "commander"
 registries:
   - name: redhatio
     hostname: registry.redhat.io
-    username: "{{ lookup('env', 'REGISTRY_USERNAME') }}"
-    password: "{{ lookup('env', 'REGISTRY_PASSWORD') }}"
-postgresql_database: commander
-postgresql_user: commander
-postgresql_password: commander
-ocp_url: "{{ lookup('env', 'OCP_URL') }}"
-ocp_username: "{{ lookup('env', 'OCP_USERNAME') }}"
-ocp_password: "{{ lookup('env', 'OCP_PASSWORD') }}"
-sink: http://commander-cache:8080
-schema_whitelist: Battalion,Member,Equipment
-slot_name: west
+    username: "myuser"
+    password: "mypass"
+postgresql:
+  database: commander
+  user: commander
+  password: commander
+ocp:
+  url: "ocpurl"
+  username: "ocpuser"
+  password: "ocppassword"
+#sink: http://commander-cache:8080
+#schema_whitelist: Battalion,Member,Equipment
+#slot_name: west
