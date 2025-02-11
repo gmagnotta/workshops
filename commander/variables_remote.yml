@@ -4,14 +4,14 @@ registries:
     hostname: registry.redhat.io
     username: "myuser"
     password: "mypass"
-ocp:
-  url: "ocpurl"
-  username: "ocpuser"
-  password: "ocppassword"
 postgresql:
   database: commander
   user: commander
   password: commander
+ocp:
+  url: "ocpurl"
+  username: "ocpuser"
+  password: "ocppassword"
 sink: http://commander-cache:8080
 schema_whitelist: Battalion,Member,Equipment
 slot_name: west

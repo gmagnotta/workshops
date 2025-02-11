@@ -1,3 +1,13 @@
+project: "commander-cache"
+registries:
+  - name: redhatio
+    hostname: registry.redhat.io
+    username: "myuser"
+    password: "mypass"
+postgresql:
+  database: commander
+  user: commander
+  password: commander
 sink: http://commander-cache:8080
 schema_whitelist: Battalion,Member,Equipment
 slot_name: edge
