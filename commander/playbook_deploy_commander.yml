@@ -66,8 +66,5 @@
     - name: skupper init in namespace {{ project }}
       ansible.builtin.command: skupper init -n {{ project }}
 
-    - name: skupper generate token
-      ansible.builtin.command: skupper token create -n {{ project }} secret.token
-
     - name: skupper expose postgresql
       ansible.builtin.command: skupper expose deployment/postgresql --port 5432 -n {{ project }}

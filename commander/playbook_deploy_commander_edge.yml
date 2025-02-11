@@ -18,14 +18,14 @@
 - name: Create Project
   hosts: localhost
   vars_files:
-    - variables.yml
+    - variables_edge.yml
   roles:
     - gmagnotta.ocp.project
 
 - name: Deploy commander cache application
   hosts: localhost
   vars_files:
-    - variables.yml
+    - variables_edge.yml
   tasks:
 
     - name: Deploy resources
@@ -37,24 +37,31 @@
 - name: Provision Debezium Server
   hosts: localhost
   vars_files:
-    - variables.yml
     - variables_edge.yml
   roles:
     - gmagnotta.ocp.debeziumserver
 
-- name: Initialize skupper
+- name: Generate skupper token in main site
   hosts: localhost
   vars_files:
     - variables.yml
-    - variables_edge.yml
   tasks:
 
     - name: Wait for user confirmation
       ansible.builtin.pause:
         prompt: "Press ENTER to continue"
+  
+    - name: skupper generate token
+      ansible.builtin.command: skupper token create -n {{ project }} edge.token
+
+- name: Initialize skupper in edge site
+  hosts: localhost
+  vars_files:
+    - variables_edge.yml
+  tasks:
 
     - name: skupper init in namespace {{ project }}
       ansible.builtin.command: skupper init -n {{ project }}
 
     - name: skupper link create in namespace {{ project }}
-      ansible.builtin.command: skupper link create -n {{ project }} secret.token
+      ansible.builtin.command: skupper link create -n {{ project }} edge.token
