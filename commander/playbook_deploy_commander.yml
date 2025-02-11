@@ -68,3 +68,6 @@
 
     - name: skupper expose postgresql
       ansible.builtin.command: skupper expose deployment/postgresql --port 5432 -n {{ project }}
+
+    - name: skupper generate token
+      ansible.builtin.command: skupper token create --expiry 1h -n {{ project }} secret.token

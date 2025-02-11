@@ -32,28 +32,19 @@
   roles:
     - gmagnotta.ocp.debeziumserver
 
-- name: Generate skupper token in main site
-  hosts: localhost
-  vars_files:
-    - variables.yml
-  tasks:
-
-    - name: Wait for user confirmation
-      ansible.builtin.pause:
-        prompt: "Press ENTER to continue"
-  
-    - name: skupper generate token
-      ansible.builtin.command: skupper token create -n {{ project }} remote.token
-
 - name: Initialize skupper in remote site
   hosts: localhost
   vars_files:
     - variables_remote.yml
   tasks:
 
+    - name: Wait for user confirmation
+      ansible.builtin.pause:
+        prompt: "Press ENTER to continue"
+
     - name: skupper init in namespace {{ project }}
       ansible.builtin.command: skupper init -n {{ project }}
 
     - name: skupper link create in namespace {{ project }}
-      ansible.builtin.command: skupper link create -n {{ project }} remote.token
+      ansible.builtin.command: skupper link create -n {{ project }} secret.token
 
