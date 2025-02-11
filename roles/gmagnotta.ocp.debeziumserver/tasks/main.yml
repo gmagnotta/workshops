@@ -2,12 +2,12 @@
 - name: Define container image for imagestream
   ansible.builtin.set_fact:
     debezium_image: debezium:2.7
-  when: use_imagestream
+  when: debezium_use_imagestream
 
 - name: Define container image for debeziumserver
   ansible.builtin.set_fact:
     debezium_image: docker.io/debezium/server@sha256:f9cec4893e40f66de78d582821d67b2616957ac56aa2af46657b1f605e80f763
-  when: not use_imagestream
+  when: not debezium_use_imagestream
 
 - name: Create PersistentVolumeClaim
   kubernetes.core.k8s:
@@ -52,7 +52,7 @@
             name: "2.7"
             referencePolicy:
               type: Local
-  when: use_imagestream
+  when: debezium_use_imagestream
 
 - name: Create Persistent Deployment
   kubernetes.core.k8s:
@@ -102,7 +102,7 @@
           type: Recreate
         revisionHistoryLimit: 10
         progressDeadlineSeconds: 600
-  when: persistent
+  when: debezium_persistent
 
 - name: Create Stateless Deployment
   kubernetes.core.k8s:
@@ -147,4 +147,4 @@
           type: Recreate
         revisionHistoryLimit: 10
         progressDeadlineSeconds: 600
-  when: not persistent
+  when: not debezium_persistent

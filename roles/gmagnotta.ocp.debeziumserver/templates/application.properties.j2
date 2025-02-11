@@ -12,9 +12,9 @@ data:
     debezium.source.offset.flush.interval.ms=0
     debezium.source.database.hostname=postgresql.{{ project }}
     debezium.source.database.port=5432
-    debezium.source.database.user={{ postgresql_user }}
-    debezium.source.database.password={{ postgresql_password }}
-    debezium.source.database.dbname={{ postgresql_database }}
+    debezium.source.database.user={{ postgresql.user }}
+    debezium.source.database.password={{ postgresql.password }}
+    debezium.source.database.dbname={{ postgresql.database }}
     debezium.source.database.server.name=tutorial
     debezium.source.schema.whitelist={{ schema_whitelist }}
     debezium.source.plugin.name=pgoutput
