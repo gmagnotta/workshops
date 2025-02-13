@@ -10,17 +10,9 @@ Install the list of dependencies:
 ansible-galaxy collection install -r collections/requirements.yml -p collections --force
 ```
 
-Set these environment variables:
-
-```
-export REGISTRY_USERNAME="myusername" # for registry.redhat.io
-export REGISTRY_PASSWORD="mypassword"
-export OCP_URL="https://api.mycluster.openshiftapps.com:6443"
-export OCP_USERNAME="myocpuser"
-export OCP_PASSWORD="myocppassword"
-```
-
 Copy the roles in the roles/ directory.
+
+Configure variables*.yml files
 
 ## Start with the Core OpenShift
 
@@ -33,13 +25,7 @@ cd workshops/commander
 Provision the commander project via ansible navigator
 
 ```
-ansible-navigator run --senv PROJECT="commander" \
- --senv REGISTRY_USERNAME="$REGISTRY_USERNAME" \
- --senv REGISTRY_PASSWORD="$REGISTRY_PASSWORD" \
- --senv OCP_URL="$OCP_URL" \
- --senv OCP_USERNAME="$OCP_USERNAME" \
- --senv OCP_PASSWORD="$OCP_PASSWORD" \
- -m stdout playbook_deploy_commander.yml
+ansible-navigator run -m stdout playbook_deploy_commander.yml
 ```
 
 Wait until everything is deployed.
@@ -62,22 +48,18 @@ curl -v --header "Content-Type: application/json" \
 
 ## Create the service network
 
-Service Interconnect is installed automatically by the playbook. In case you need to manage
-it manually:
+Service Interconnect is installed automatically by the playbook. A temporary token is generated in
+the file secret.token.
+
+PostgreSQL database is automatically exposed on the service network.
+
+In case you need to generate a new token use ansible script:
 
 ```
-skupper init -n commander
-
-skupper token create -n commander secret.token
+ansible-navigator run -m stdout playbook_skupper_regenerate_token.yml
 ```
 
-## Expose the postgresql database on the service network
-
-```
-skupper expose deployment/postgresql --port 5432 -n commander
-```
-
-## Switch to remote OpenShift
+## Provision remote application
 
 Enter this directory
 
@@ -88,13 +70,7 @@ cd workshops/commander
 Provision the commander project via ansible
 
 ```
-ansible-navigator run --senv PROJECT="commander-cache" \
- --senv REGISTRY_USERNAME="$REGISTRY_USERNAME" \
- --senv REGISTRY_PASSWORD="$REGISTRY_PASSWORD" \
- --senv OCP_URL="$OCP_URL" \
- --senv OCP_USERNAME="$OCP_USERNAME" \
- --senv OCP_PASSWORD="$OCP_PASSWORD" \
- -m stdout playbook_deploy_commander_remote.yml
+ansible-navigator run -m stdout playbook_deploy_commander_remote.yml
 ```
 
 Wait until commander is provisioned
@@ -105,13 +81,13 @@ You can inspect the api /member, /equipment and /battalion to show that there is
 
 ## Create the service network
 
-Service Interconnect is installed automatically by the playbook. In case you need to manage
-it manually:
+The installation of Service Interconnect is delayed until you press the ENTER key.
+
+In case you have troubles (the token is expired) you can regenerate a new token as before and then 
 
 ```
-skupper init -n commander
-
-skupper link create -n commander secret.token
+ansible-navigator run -m stdout playbook_skupper_removelink_remote.yml
+ansible-navigator run -m stdout playbook_skupper_createlink_remote.yml
 ```
 
 Now the remote postgresql database should be accessinble to debezium.
@@ -144,13 +120,3 @@ You can perform the same demo also on an edge device running microshift. Just us
 ## Demo completed
 
 The demo is completed!
-
-### Utils
-
-If you need to switch between the two OpenShift, you can do by:
-
-```
-oc config view # will return available context
-
-oc config use-context default/api-some-server:6443/kube:admin
-```
