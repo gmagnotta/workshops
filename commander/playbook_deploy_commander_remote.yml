@@ -46,5 +46,5 @@
       ansible.builtin.command: skupper init -n {{ project }}
 
     - name: skupper link create in namespace {{ project }}
-      ansible.builtin.command: skupper link create -n {{ project }} secret.token
+      ansible.builtin.command: skupper link create --name core -n {{ project }} secret.token
 
