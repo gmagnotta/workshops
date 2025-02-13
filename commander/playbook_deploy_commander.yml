@@ -18,7 +18,7 @@
   vars_files:
     - variables.yml
   roles:
-    - gmagnotta.ocp.postgresql.provision
+    - gmagnotta.ocp.postgresql_provision
 
 - name: Setup Schema Postgresql
   hosts: localhost
@@ -27,7 +27,7 @@
   vars:
     postgresql_file: files/schema.sql
   roles:
-    - gmagnotta.ocp.postgresql.runsql
+    - gmagnotta.ocp.postgresql_runsql
 
 - name: Load data into Postgresql
   hosts: localhost
@@ -36,14 +36,14 @@
   vars:
     postgresql_file: files/import.sql
   roles:
-    - gmagnotta.ocp.postgresql.runsql
+    - gmagnotta.ocp.postgresql_runsql
 
 - name: Configure postgresql for CDC
   hosts: localhost
   vars_files:
     - variables.yml
   roles:
-    - gmagnotta.ocp.postgresql.enablepublication
+    - gmagnotta.ocp.postgresql_enablepublication
 
 - name: Deploy commander application
   hosts: localhost

@@ -10,8 +10,6 @@ Install the list of dependencies:
 ansible-galaxy collection install -r collections/requirements.yml -p collections --force
 ```
 
-Copy the roles in the roles/ directory.
-
 Configure variables*.yml files
 
 ## Start with the Core OpenShift
