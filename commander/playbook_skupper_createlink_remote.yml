@@ -1,0 +1,16 @@
+---
+- name: OCP Login
+  hosts: localhost
+  vars_files:
+    - variables_remote.yml
+  roles:
+    - gmagnotta.ocp.login
+
+- name: Create skupper link in remote site
+  hosts: localhost
+  vars_files:
+    - variables_remote.yml
+  tasks:
+
+    - name: skupper link create in namespace {{ project }}
+      ansible.builtin.command: skupper link create --name core -n {{ project }} secret.token

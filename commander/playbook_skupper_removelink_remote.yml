@@ -1,0 +1,16 @@
+---
+- name: OCP Login
+  hosts: localhost
+  vars_files:
+    - variables_remote.yml
+  roles:
+    - gmagnotta.ocp.login
+
+- name: Remove skupper link from remote site
+  hosts: localhost
+  vars_files:
+    - variables_remote.yml
+  tasks:
+
+    - name: skupper link delete -n {{ project }}
+      ansible.builtin.command: skupper link delete core -n {{ project }}
