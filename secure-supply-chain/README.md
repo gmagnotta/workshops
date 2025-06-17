@@ -2,13 +2,19 @@
 
 ## This repository is intended as a placeholder for collecting useful resources to demonstrate on how to build a secure supply chain.
 
+## Prerequirements
+
+Install the list of dependencies:
+
+```
+ansible-galaxy collection install -r collections/requirements.yml -p collections --force
+```
+
+Configure variables*.yml files
+
 ## How to start
 
-Install cosign on your local machine and generate key-pair with the command:
-
-`cosign generate-key-pair --output-key-prefix=cosign`
-
-Then run the ansible playbook 'playbook_tekton_chains.yaml'
+Run the ansible playbook 'playbook_tekton_chains.yaml'
 
 After Tekton Chains is installed, it will monitors TaskRun providing results [IMAGE_URL] and [IMAGE_DIGEST].
 
