@@ -1,0 +1,423 @@
+---
+#
+# Playbook to create a Tekton Pipeline for hello-tomcat project
+#
+- name: OCP Login
+  hosts: localhost
+  vars_files:
+    - variables.yml
+  roles:
+    - gmagnotta.ocp.login
+
+- name: Create Project
+  hosts: localhost
+  vars_files:
+    - variables.yml
+  roles:
+    - gmagnotta.ocp.project
+
+- name: Deploy Tomcat in OpenShift cluster
+  hosts: localhost
+  vars_files:
+    - variables.yml
+  tasks:
+
+    - name: Import buildah_s2i_task
+      shell: "oc apply -n {{ project }} -f https://raw.githubusercontent.com/gmagnotta/buildah_s2i/main/buildah_s2i_task.yaml"
+
+    - name: Import generate_sbom_task
+      shell: "oc apply -n {{ project }} -f https://raw.githubusercontent.com/gmagnotta/container-utils/main/tekton/generate_sbom_task.yaml"
+
+    - name: Import vulnerability_sbom_task
+      shell: "oc apply -n {{ project }} -f https://raw.githubusercontent.com/gmagnotta/container-utils/main/tekton/vulnerability_sbom_task.yaml"
+
+    # - name: Check if secret is linked
+    #   shell: "oc get serviceaccount pipeline -n {{ project }} -o json | jq -r '.secrets[] | select(.name | test(\"redhatregistryio\")).name'"
+    #   register: redhatregistryio
+
+    # - name: Print value
+    #   ansible.builtin.debug:
+    #     msg: "redhatregistryio={{ redhatregistryio.stdout }}"
+
+    - name: Link secret to pipeline
+      command: "oc secrets link pipeline redhatio -n {{ project }}"
+    #   when: redhatregistryio.stdout == ""
+
+    - name: Create Image Stream
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: image.openshift.io/v1
+          kind: ImageStream
+          metadata:
+            name: jws60-openjdk17-openshift-rhel8
+            namespace: "{{ project }}"
+          spec:
+            lookupPolicy:
+              local: true
+            tags:
+            - annotations:
+                description: Red Hat JBoss WS 6.0 Image
+              from:
+                kind: DockerImage
+                name: registry.redhat.io/jboss-webserver-6/jws60-openjdk17-openshift-rhel8
+              name: latest
+              referencePolicy:
+                type: Local
+    
+    - name: Create ImageStream
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: image.openshift.io/v1
+          kind: ImageStream
+          metadata:
+            name: hello-tomcat
+            namespace: "{{ project }}"
+          spec:
+            lookupPolicy:
+              local: true
+
+    - name: Create ConfigMap
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          kind: ConfigMap
+          apiVersion: v1
+          metadata:
+            name: hello-tomcat-s2ienvironment
+            namespace: "{{ project }}"
+          data:
+            env: |
+              #MAVEN_CLEAR_REPO=true
+              #MAVEN_S2I_GOALS=clean package sonar:sonar
+              #MAVEN_ARGS_APPEND=-Dsonar.projectKey=hello-tomcat -Dsonar.projectName='hello-tomcat' -Dsonar.host.url=http://sonarqube  -Dsonar.token=sqp_ae716219200c705ff2ff1698f2e2c860573d12aa
+              #
+              # MAVEN REPO TO PUSH ARTIFACTS
+              #
+              #MAVEN_REPOS=nexus
+              #NEXUS_MAVEN_REPO_ID=nexus
+              #NEXUS_MAVEN_REPO_URL=${env.NEXUS_HOST}
+              #NEXUS_MAVEN_REPO_USERNAME=${env.NEXUS_USERNAME}
+              #NEXUS_MAVEN_REPO_PASSWORD=${env.NEXUS_PASSWORD}
+              #
+              # MAVEN MIRROR
+              #
+              #NEXUS_HOST=http://nexus3:8081
+              #NEXUS_USERNAME=myuser
+              #NEXUS_PASSWORD=mypass
+              #MAVEN_MIRRORS=dev
+              #DEV_MAVEN_MIRROR_ID=nexus
+              #DEV_MAVEN_MIRROR_URL=${env.NEXUS_HOST}/repository/maven-central/
+              #DEV_MAVEN_MIRROR_OF=<![CDATA[*]]>
+
+    - name: Create Pipeline
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: tekton.dev/v1beta1
+          kind: Pipeline
+          metadata:
+            name: hello-tomcat
+            namespace: "{{ project }}"
+          spec:
+            workspaces:
+              - name: src
+              - name: env
+              - name: secureenv
+              - name: artifacts
+              - name: empty
+            tasks:
+              - name: fetch-repository
+                taskRef:
+                  resolver: cluster
+                  params:
+                    - name: kind
+                      value: task
+                    - name: name
+                      value: git-clone
+                    - name: namespace
+                      value: openshift-pipelines
+                workspaces:
+                  - name: output
+                    workspace: src
+                params:
+                  - name: URL
+                    value: "{{ gitrepo }}"
+                  - name: DELETE_EXISTING
+                    value: "true"
+                  - name: REVISION
+                    value: "master"
+              - name: build
+                taskRef:
+                  name: buildah-s2i
+                runAfter:
+                  - fetch-repository
+                workspaces:
+                  - name: source
+                    workspace: src
+                  - name: environment
+                    workspace: env
+                  - name: secureenvironment
+                    workspace: secureenv
+                  - name: artifacts
+                    workspace: artifacts
+                params:
+                  - name: BUILDER_IMAGE
+                    value: "image-registry.openshift-image-registry.svc:5000/{{ project }}/jws60-openjdk17-openshift-rhel8"
+                  - name: TLSVERIFY
+                    value: "false"
+                  - name: OUTPUT_IMAGE
+                    value: "image-registry.openshift-image-registry.svc:5000/{{ project }}/hello-tomcat"
+                  - name: PATH_CONTEXT
+                    value: "{{ repocontext }}"
+              - name: generate-sbom
+                taskRef:
+                  name: generate-sbom
+                workspaces:
+                  - name: source
+                    workspace: src
+                runAfter:
+                  - build
+                params:
+                  - name: IMAGETOSCAN
+                    value: "$(tasks.build.results.IMAGE_URL)@$(tasks.build.results.IMAGE_DIGEST)"
+                  - name: SBOMFILE
+                    value: "$(workspaces.source.path)/tomcat-sbom.cdx"
+                  - name: TLSVERIFY
+                    value: "false"
+                  - name: OUTPUT_IMAGE
+                    value: "image-registry.openshift-image-registry.svc:5000/{{ project }}/hello-tomcat:sbom"
+              - name: vuln-scan
+                taskRef:
+                  name: vulnerability-sbom
+                workspaces:
+                  - name: source
+                    workspace: src
+                runAfter:
+                  - generate-sbom
+                params:
+                  - name: SBOM
+                    value: "$(workspaces.source.path)/tomcat-sbom.cdx"
+              - name: deploy
+                taskRef:
+                  resolver: cluster
+                  params:
+                    - name: kind
+                      value: task
+                    - name: name
+                      value: openshift-client
+                    - name: namespace
+                      value: openshift-pipelines
+                runAfter:
+                  - vuln-scan
+                workspaces:
+                  - name: manifest-dir
+                    workspace: src
+                params:
+                  - name: SCRIPT
+                    value: |
+                      cd $(workspaces.manifest-dir.path)/{{ repocontext }}/k8s/overlay/dev
+                      
+                      cat <<EOF > kustomization.yaml
+                      apiVersion: kustomize.config.k8s.io/v1beta1
+                      kind: Kustomization
+
+                      resources:
+                      - ../../base
+                      images:
+                      - name: hello-tomcat
+                        newName: $(tasks.build.results.IMAGE_URL)@$(tasks.build.results.IMAGE_DIGEST)
+                      EOF
+
+                      oc apply -k .
+              - name: export-image
+                params:
+                  - name: srcImageURL
+                    value: 'docker://$(tasks.build.results.IMAGE_URL)@$(tasks.build.results.IMAGE_DIGEST)'
+                  - name: destImageURL
+                    value: 'docker://quay.io/gmagnotta/hello-tomcat:latest'
+                  - name: srcTLSverify
+                    value: 'false'
+                  - name: destTLSverify
+                    value: 'false'
+                taskRef:
+                  resolver: cluster
+                  params:
+                    - name: kind
+                      value: task
+                    - name: name
+                      value: skopeo-copy
+                    - name: namespace
+                      value: openshift-pipelines
+                runAfter:
+                  - deploy
+                workspaces:
+                  - name: images-url
+                    workspace: empty
+              - name: export-sig
+                params:
+                  - name: srcImageURL
+                    value: 'docker://$(tasks.build.results.IMAGE_URL):sha256-$(tasks.build.results.SIMPLE_DIGEST).sig'
+                  - name: destImageURL
+                    value: 'docker://quay.io/gmagnotta/hello-tomcat:sha256-$(tasks.build.results.SIMPLE_DIGEST).sig'
+                  - name: srcTLSverify
+                    value: 'false'
+                  - name: destTLSverify
+                    value: 'false'
+                runAfter:
+                  - export-image
+                taskRef:
+                  resolver: cluster
+                  params:
+                    - name: kind
+                      value: task
+                    - name: name
+                      value: skopeo-copy
+                    - name: namespace
+                      value: openshift-pipelines
+                workspaces:
+                  - name: images-url
+                    workspace: empty
+              - name: export-att
+                params:
+                  - name: srcImageURL
+                    value: 'docker://$(tasks.build.results.IMAGE_URL):sha256-$(tasks.build.results.SIMPLE_DIGEST).att'
+                  - name: destImageURL
+                    value: 'docker://quay.io/gmagnotta/hello-tomcat:sha256-$(tasks.build.results.SIMPLE_DIGEST).att'
+                  - name: srcTLSverify
+                    value: 'false'
+                  - name: destTLSverify
+                    value: 'false'
+                runAfter:
+                  - export-image
+                taskRef:
+                  resolver: cluster
+                  params:
+                    - name: kind
+                      value: task
+                    - name: name
+                      value: skopeo-copy
+                    - name: namespace
+                      value: openshift-pipelines
+                workspaces:
+                  - name: images-url
+                    workspace: empty
+
+    - name: Create TriggerBinding
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: triggers.tekton.dev/v1alpha1
+          kind: TriggerBinding
+          metadata:
+            name: event-binding
+            namespace: "{{ project }}"
+          spec:
+            params:
+              - name: git-repository-url
+                value: $(body.repository.url) # use $(body.repository.clone_url) for gitea see https://docs.gitea.com/usage/webhooks#event-information
+
+    - name: Create TriggerTemplate
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: triggers.tekton.dev/v1alpha1
+          kind: TriggerTemplate
+          metadata:
+            name: push-trigger-template
+            namespace: "{{ project }}"
+          spec:
+            params:
+            - name: git-repository-url
+              description: The git repository url
+            resourcetemplates:
+            - apiVersion: tekton.dev/v1beta1
+              kind: PipelineRun
+              metadata:
+                generateName: hello-tomcat-
+              spec:
+                pipelineRef:
+                  name: hello-tomcat
+                workspaces:
+                  - name: src
+                    volumeClaimTemplate:
+                      spec:
+                        accessModes:
+                          - ReadWriteOnce
+                        resources:
+                          requests:
+                            storage: 1Gi
+                        storageClassName: ocs-external-storagecluster-ceph-rbd
+                        volumeMode: Filesystem
+                      status: {}
+                  - configMap:
+                      name: hello-tomcat-s2ienvironment
+                    name: env
+                  - emptyDir: {}
+                    name: secureenv
+                  - name: artifacts
+                    emptyDir: {}
+
+    - name: Create EventListener
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: triggers.tekton.dev/v1alpha1
+          kind: EventListener
+          metadata:
+            name: listener
+            namespace: "{{ project }}"
+          spec:
+            serviceAccountName: pipeline
+            triggers:
+              - name: trigger
+                interceptors:
+                  - ref:
+                      name: "github"
+                      kind: ClusterInterceptor
+                      apiVersion: triggers.tekton.dev
+                    params:
+                    - name: "secretRef"
+                      value:
+                        secretName: git-secret
+                        secretKey: secretToken
+                    - name: "eventTypes"
+                      value: ["push"]
+                bindings:
+                  - ref: event-binding    
+                template:
+                  ref: push-trigger-template
+
+    - name: Create Secret
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          kind: Secret
+          apiVersion: v1
+          metadata:
+            name: git-secret
+            namespace: "{{ project }}"
+          data:
+            secretToken: "{{ webhook_password | b64encode }}"
+
+    - name: Create Route
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: route.openshift.io/v1
+          kind: Route
+          metadata:
+            labels:
+              app.kubernetes.io/managed-by: EventListener
+              app.kubernetes.io/part-of: Triggers
+              eventlistener: listener
+            name: el-listener
+            namespace: "{{ project }}"
+          spec:
+            port:
+              targetPort: http-listener
+            to:
+              kind: Service
+              name: el-listener
+              weight: 100

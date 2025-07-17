@@ -1,0 +1,24 @@
+---
+#
+# Playbook to create a Tekton Pipeline for hello-tomcat project
+#
+
+- name: Deploy Tomcat in MicroShift cluster
+  hosts: localhost
+  vars:
+    project: "hello-tomcat"
+  tasks:
+
+    - name: Create {{ project }} Namespace
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: "{{ project }}"
+            labels:
+             app: "{{ project }}"
+
+    - name: Deploy resources
+      ansible.builtin.shell: oc apply -n {{ project }} -k /home/gmagnott/src/examples/hello-tomcat/src/main/k8s/overlays/prod/
