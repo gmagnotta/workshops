@@ -3,13 +3,24 @@
 # Playbook to create a Tekton Pipeline for hello-tomcat project
 #
 
+- name: OCP Login
+  hosts: localhost
+  vars_files:
+    - variables.yml
+  roles:
+    - gmagnotta.ocp.login
+
+- name: Create Project
+  hosts: localhost
+  vars_files:
+    - variables.yml
+  roles:
+    - gmagnotta.ocp.project
+
 - name: Deploy Tomcat in OpenShift cluster
   hosts: localhost
-  vars:
-    project: "hello-tomcat"
-    webhook_password: "mywebhookpassword"
-    gitrepo: "https://github.com/gmagnotta/examples"
-    repocontext: "hello-tomcat"
+  vars_files:
+    - variables.yml
   tasks:
 
     - name: Import buildah_s2i_task
@@ -21,17 +32,20 @@
     - name: Import vulnerability_sbom_task
       shell: "oc apply -n {{ project }} -f https://raw.githubusercontent.com/gmagnotta/container-utils/main/tekton/vulnerability_sbom_task.yaml"
 
-    - name: Check if secret is linked
-      shell: "oc get serviceaccount pipeline -n {{ project }} -o json | jq -r '.secrets[] | select(.name | test(\"redhatregistryio\")).name'"
-      register: redhatregistryio
+    # - name: Check if secret is linked
+    #   shell: "oc get serviceaccount pipeline -n {{ project }} -o json | jq -r '.secrets[] | select(.name | test(\"redhatregistryio\")).name'"
+    #   register: redhatregistryio
 
     # - name: Print value
     #   ansible.builtin.debug:
     #     msg: "redhatregistryio={{ redhatregistryio.stdout }}"
 
     - name: Link secret to pipeline
-      command: "oc secrets link pipeline redhatregistryio -n {{ project }}"
-      when: redhatregistryio.stdout == ""
+      command: "oc secrets link pipeline redhatio -n {{ project }}"
+
+    - name: Link secret to pipeline
+      command: "oc secrets link pipeline quay -n {{ project }}"
+      # when: redhatregistryio.stdout == ""
 
     - name: Create Image Stream
       kubernetes.core.k8s:
@@ -201,9 +215,11 @@
 
                       resources:
                       - ../../base
+                      
                       images:
-                      - name: hello-tomcat
-                        newName: $(tasks.build.results.IMAGE_URL)@$(tasks.build.results.IMAGE_DIGEST)
+                      - name: quay.io/gmagnotta/hello-tomcat:stable
+                        newName: "$(tasks.build.results.IMAGE_URL)"
+                        digest: "$(tasks.build.results.IMAGE_DIGEST)"
                       EOF
 
                       oc apply -k .
