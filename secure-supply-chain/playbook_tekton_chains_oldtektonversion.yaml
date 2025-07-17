@@ -1,0 +1,117 @@
+---
+#
+# Playbook to create an installation of Tekton Chain Pipelines
+#
+- name: OCP Login
+  hosts: localhost
+  vars_files:
+    - variables.yml
+  roles:
+    - gmagnotta.ocp.login
+
+- name: Deploy Tekton Chains Pipelines in OCP
+  hosts: localhost
+  tasks:
+    - name: Create Subscription
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: operators.coreos.com/v1alpha1
+          kind: Subscription
+          metadata:
+            name: openshift-pipelines-operator
+            namespace: openshift-operators
+          spec:
+            channel: pipelines-1.14
+            name: openshift-pipelines-operator-rh
+            installPlanApproval: Automatic
+            source: redhat-operators
+            sourceNamespace: openshift-marketplace
+        wait: true
+        wait_condition: 
+          reason: AllCatalogSourcesHealthy
+          status: false
+          type: CatalogSourcesUnhealthy
+        wait_timeout: 300
+
+    - name: Wait for signing-secrets Secret creation
+      kubernetes.core.k8s_info:
+        kind: Secret
+        name: signing-secrets
+        namespace: openshift-pipelines
+      register: signing_secrets
+      until: signing_secrets.resources | length != 0
+      retries: 6
+      delay: 30
+
+    - name: Generate cosign pubkey
+      ansible.builtin.command: cosign generate-key-pair --output-key-prefix=cosign
+
+    - name: Read cosign artifacts
+      set_fact:
+        cosign_key: "{{ lookup('ansible.builtin.file', 'cosign.key') }}"
+        cosign_pub: "{{ lookup('ansible.builtin.file', 'cosign.pub') }}"
+
+    - name: Patch signing-secrets
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: signing-secrets
+            namespace: openshift-pipelines
+          data:
+            cosign.key: "{{ cosign_key | b64encode }}"
+            cosign.password: ""
+            cosign.pub: "{{ cosign_pub | b64encode }}"
+
+    - name: Wait for creation of chains-config ConfigMap
+      kubernetes.core.k8s_info:
+        kind: ConfigMap
+        name: chains-config
+        namespace: openshift-pipelines
+      register: chains_config
+      until: chains_config.resources | length != 0
+      retries: 6
+      delay: 10
+
+    - name: Patch chains-config
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: chains-config
+            namespace: openshift-pipelines
+          data:
+            artifacts.pipelinerun.storage: oci
+            artifacts.taskrun.storage: oci
+            transparency.enabled: 'true'
+
+    # - name: Debug
+    #   debug:
+    #     msg: "{{ chains_config }} {{ chains_config.resources | length }}"
+
+    - name: Get the name of tekton-chains-controller
+      kubernetes.core.k8s_info:
+        kind: Pod
+        namespace: openshift-pipelines
+        label_selectors:
+          - "app = tekton-chains-controller"
+      register: pod_list
+
+    # - name: Debug
+    #   debug:
+    #     msg: "{{ pod_list.resources[0].metadata.name }}"
+
+    - name: Delete  Tekton Chains Controller
+      kubernetes.core.k8s:
+        state: absent
+        definition:
+          apiVersion: v1
+          kind: Pod
+          metadata:
+            name: "{{ pod_list.resources[0].metadata.name }}"
+            namespace: openshift-pipelines
